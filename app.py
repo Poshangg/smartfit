@@ -1632,4 +1632,5 @@ if __name__ == '__main__':
 
     # Ensure you have run the 'flask init-db' command first. # Comment no longer accurate
     print("Starting Flask app...")
-    app.run(debug=True)
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port, debug=True)
