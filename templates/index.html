@@ -1,0 +1,739 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div id="flash-messages" class="position-fixed top-0 start-50 translate-middle-x pt-3 z-index-toast" style="z-index: 1080;"></div>
+
+<div class="mb-4">
+    <h1 class="display-5">Welcome, {{ current_user.username }}!</h1>
+    <p class="lead text-muted">Here's your dashboard overview for {{ now.strftime('%A, %B %d') }}.</p> <!-- Updated greeting -->
+</div>
+
+<!-- Remove Today's Summary Row -->
+<!-- The entire <div class="row mb-4"> ... </div> containing the summary card is removed -->
+
+
+<div class="row g-4"> <!-- Use Bootstrap row and gutters -->
+
+    <!-- Today's Workout -->
+    <div class="col-md-6 col-lg-4">
+        <div class="card h-100 shadow-sm">
+            <div class="card-body d-flex flex-column">
+                <h2 class="card-title h5 mb-3">
+                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-lightning me-2" viewBox="0 0 16 16"> <path d="M5.52.359A.5.5 0 0 1 6 0h4a.5.5 0 0 1 .474.658L8.694 6H12.5a.5.5 0 0 1 .395.807l-7 9a.5.5 0 0 1-.873-.454L6.823 9.5H3.5a.5.5 0 0 1-.48-.641zM6.374 1 12 7h-4.181a.5.5 0 0 1-.447-.724L10 1z"/> </svg>
+                    Today's Workout
+                </h2>
+                <p class="card-text text-muted flex-grow-1">{{ today_workout }}</p>
+                <a href="{{ url_for('workouts') }}" class="btn btn-outline-primary mt-auto">View Workouts</a> <!-- Use mt-auto -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Meal Plan -->
+    <div class="col-md-6 col-lg-4">
+        <div class="card h-100 shadow-sm">
+            <div class="card-body d-flex flex-column">
+                <h2 class="card-title h5 mb-3">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-book me-2" viewBox="0 16 16"> <path d="M1 2.828c.885-.37 2.154-.769 3.388-.893 1.33-.134 2.458.063 3.112.752v9.746c-.935-.53-2.12-.603-3.213-.493-1.18.12-2.37.461-3.287.811zm7.5-.141c.654-.689 1.782-.886 3.112-.752 1.234.124 2.503.523 3.388.893v9.746c-.917-.35-2.107-.692-3.287-.81-1.094-.111-2.278-.039-3.213.492zM8 1.783C7.015.936 5.587.81 4.287.94c-1.514.153-3.042.672-3.994 1.105A.5.5 0 0 0 0 2.5v11a.5.5 0 0 0 .707.455c.882-.4 2.303-.881 3.68-1.02 1.409-.142 2.59.087 3.223.877a.5.5 0 0 0 .78 0c.633-.79 1.814-1.019 3.222-.877 1.378.139 2.8.62 3.681 1.02A.5.5 0 0 0 16 13.5v-11a.5.5 0 0 0-.293-.455c-.952-.433-2.48-.952-3.994-1.105C10.413.809 8.985.936 8 1.783"/> </svg>
+                    Meal Plan
+                </h2>
+                <p class="card-text text-muted flex-grow-1">{{ meal_plan_summary }}</p>
+                <a href="{{ url_for('meals') }}" class="btn btn-outline-primary mt-auto">View Meal Plans</a> <!-- Use mt-auto -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Updated Daily Goals Card -->
+    <div class="col-md-6 col-lg-4">
+        <div class="card h-100 shadow-sm">
+            <div class="card-body d-flex flex-column">
+                <h2 class="card-title h5 mb-3">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-flag me-2" viewBox="0 0 16 16"> <path d="M14.778.085A.5.5 0 0 1 15 .5V8a.5.5 0 0 1-.314.464L14.5 8l.186.464A.5.5 0 0 1 14.5 9V15.5a.5.5 0 0 1-.778.415L7.9 13.121l-2.558 1.593A.5.5 0 0 1 4.5 14.5v-7a.5.5 0 0 1 .186-.384L5.5 7l-.186-.384A.5.5 0 0 1 5.5 6V.5a.5.5 0 0 1 .778-.415l2.558 1.593L12.1 1.47zM5.5 1A.5.5 0 0 0 5 .5V6a.5.5 0 0 0 .5.5h3a.5.5 0 0 0 .5-.5V1z"/> </svg>
+                    Today's Goals & Progress
+                </h2>
+                <div class="flex-grow-1"> <!-- Wrap content to allow button push -->
+                    {% if profile.goal %}
+                        <p class="card-text mb-3"><strong>Overall Goal:</strong> {{ profile.goal }}</p>
+                    {% endif %}
+
+                    {% if profile and (profile.goal_calories or profile.goal_protein or profile.goal_carbs or profile.goal_fat) %}
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span>Calories</span>
+                                <!-- Added IDs -->
+                                <span class="fw-bold"><span id="calories-consumed">{{ calories_consumed|round|int }}</span> / <span id="calories-goal">{{ profile.goal_calories or '?' }}</span> kcal</span>
+                            </div>
+                            {% if profile.goal_calories %}
+                            <div class="progress mt-1" style="height: 10px;">
+                                {% set cal_progress = (calories_consumed / profile.goal_calories * 100)|round|int if profile.goal_calories > 0 else 0 %}
+                                <!-- Added ID -->
+                                <div id="calories-progress-bar" class="progress-bar {% if cal_progress > 100 %}bg-danger{% else %}bg-success{% endif %}" role="progressbar" style="width: {{ [cal_progress, 100]|min }}%;" aria-valuenow="{{ calories_consumed|round|int }}" aria-valuemin="0" aria-valuemax="{{ profile.goal_calories }}"><span id="calories-progress-percent">{{ [cal_progress, 100]|min }}</span>%</div>
+                            </div>
+                            {% endif %}
+                             <!-- Added ID -->
+                             <div class="text-center mt-1"><small class="text-muted">Net: <span id="net-calories">{{ net_calories|round|int }}</span> kcal (<span id="calories-burned">{{ calories_burned|round|int }}</span> burned)</small></div>
+                        </div>
+
+                        <div class="mb-2">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span>Protein</span>
+                                <!-- Added IDs -->
+                                <span class="fw-bold"><span id="protein-consumed">{{ protein_consumed|round(1) }}</span> / <span id="protein-goal">{{ profile.goal_protein or '?' }}</span> g</span>
+                            </div>
+                            {% if profile.goal_protein %}
+                            <div class="progress mt-1" style="height: 8px;">
+                                {% set prot_progress = (protein_consumed / profile.goal_protein * 100)|round|int if profile.goal_protein > 0 else 0 %}
+                                <!-- Added ID -->
+                                <div id="protein-progress-bar" class="progress-bar bg-primary" role="progressbar" style="width: {{ [prot_progress, 100]|min }}%;" aria-valuenow="{{ protein_consumed|round(1) }}" aria-valuemin="0" aria-valuemax="{{ profile.goal_protein }}"></div>
+                            </div>
+                            {% endif %}
+                        </div>
+                        <div class="mb-2">
+                             <div class="d-flex justify-content-between align-items-center">
+                                <span>Carbs</span>
+                                <!-- Added IDs -->
+                                <span class="fw-bold"><span id="carbs-consumed">{{ carbs_consumed|round(1) }}</span> / <span id="carbs-goal">{{ profile.goal_carbs or '?' }}</span> g</span>
+                            </div>
+                             {% if profile.goal_carbs %}
+                            <div class="progress mt-1" style="height: 8px;">
+                                {% set carb_progress = (carbs_consumed / profile.goal_carbs * 100)|round|int if profile.goal_carbs > 0 else 0 %}
+                                <!-- Added ID -->
+                                <div id="carbs-progress-bar" class="progress-bar bg-warning" role="progressbar" style="width: {{ [carb_progress, 100]|min }}%;" aria-valuenow="{{ carbs_consumed|round(1) }}" aria-valuemin="0" aria-valuemax="{{ profile.goal_carbs }}"></div>
+                            </div>
+                             {% endif %}
+                        </div>
+                        <div class="mb-2">
+                             <div class="d-flex justify-content-between align-items-center">
+                                <span>Fat</span>
+                                <!-- Added IDs -->
+                                <span class="fw-bold"><span id="fat-consumed">{{ fat_consumed|round(1) }}</span> / <span id="fat-goal">{{ profile.goal_fat or '?' }}</span> g</span>
+                            </div>
+                             {% if profile.goal_fat %}
+                            <div class="progress mt-1" style="height: 8px;">
+                                {% set fat_progress = (fat_consumed / profile.goal_fat * 100)|round|int if profile.goal_fat > 0 else 0 %}
+                                <!-- Added ID -->
+                                <div id="fat-progress-bar" class="progress-bar bg-info" role="progressbar" style="width: {{ [fat_progress, 100]|min }}%;" aria-valuenow="{{ fat_consumed|round(1) }}" aria-valuemin="0" aria-valuemax="{{ profile.goal_fat }}"></div>
+                            </div>
+                             {% endif %}
+                        </div>
+
+                    {% else %}
+                        <p class="card-text text-muted">Set your nutrition goals in your profile to track progress!</p>
+                    {% endif %}
+                </div>
+                <!-- Button Group for Actions -->
+                <div class="mt-auto d-grid gap-2 d-sm-flex justify-content-sm-center">
+                    <!-- Updated Button to trigger modal -->
+                    <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#logMealModal">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-plus-circle me-1" viewBox="0 0 16 16">
+                          <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14m0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16"/>
+                          <path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4"/>
+                        </svg>
+                        Log Food
+                    </button>
+                    <a href="{{ url_for('profile') }}" class="btn btn-outline-secondary btn-sm">
+                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-pencil-square me-1" viewBox="0 0 16 16">
+                          <path d="M15.502 1.94a.5.5 0 0 1 0 .706L14.459 3.69l-2-2L13.502.646a.5.5 0 0 1 .707 0l1.293 1.293zm-1.75 2.456-2-2L4.939 9.21a.5.5 0 0 0-.121.196l-.805 2.414a.25.25 0 0 0 .316.316l2.414-.805a.5.5 0 0 0 .196-.12l6.813-6.814z"/>
+                          <path fill-rule="evenodd" d="M1 13.5A1.5 1.5 0 0 0 2.5 15h11a1.5 1.5 0 0 0 1.5-1.5v-6a.5.5 0 0 0-1 0v6a.5.5 0 0 1-.5.5h-11a.5.5 0 0 1-.5-.5v-11a.5.5 0 0 1 .5-.5H9a.5.5 0 0 0 0-1H2.5A1.5 1.5 0 0 0 1 2.5z"/>
+                        </svg>
+                        Update Goals
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Workout Log -->
+    <div class="col-md-6 col-lg-4">
+        <div class="card h-100 shadow-sm">
+            <div class="card-body d-flex flex-column">
+                <h2 class="card-title h5 mb-3">
+                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-clock-history me-2" viewBox="0 0 16 16"> <path d="M8.515 1.019A7 7 0 0 0 8 1V0a8 8 0 0 1 .589.022zm2.004.45a7 7 0 0 0-.985-.299l.219-.976q.576.129 1.126.342zm1.37.71a7 7 0 0 0-.439-.27l.493-.87a8 8 0 0 1 .979.654l-.615.789a7 7 0 0 0-.418-.302zm1.834 1.798a7 7 0 0 0-.653-.796l.724-.69a8 8 0 0 1 1.142 1.115l-.644.74zm.744 1.352a7 7 0 0 0-.214-.468l.893-.45a8 8 0 0 1 .45 1.088l-.95.313a7 7 0 0 0-.179-.483m.53 2.507a7 7 0 0 0-.1-1.025l.985-.17a8 8 0 0 1 .1 1.185zM13.66 7.447l.91-.417a8 8 0 0 1-.45 1.088l-.893-.45a7 7 0 0 0 .179-.483M12 8.5a4 4 0 1 1-8 0 4 4 0 0 1 8 0m-.5 0a3.5 3.5 0 1 0-7 0 3.5 3.5 0 0 0 7 0m-6.515 5.293A7 7 0 0 1 8 15.01V16a8 8 0 0 0-6.478-3.21l.417-.91zm-.744-1.352a7 7 0 0 1 .214.468l-.893.45a8 8 0 0 0-.45-1.088l.95-.313a7 7 0 0 1 .179.483m-.53-2.507a7 7 0 0 1 .1 1.025l-.985.17a8 8 0 0 0-.1-1.185zM2.34 7.447l-.91.417a8 8 0 0 0 .45 1.088l.893-.45a7 7 0 0 1-.179-.483m.744-1.352a7 7 0 0 1 .653.796l-.724.69a8 8 0 0 0-1.142-1.115l.644-.74z"/> <path d="M8.5 5.5a.5.5 0 0 0-1 0v3.354l-1.429 1.43a.5.5 0 1 0 .707.707l1.5-1.5a.5.5 0 0 0 .146-.353z"/> </svg>
+                    Last Workout Logged
+                </h2>
+                {% if recent_workout %}
+                <div class="flex-grow-1"> <!-- Wrap content -->
+                    <p class="card-text mb-1">
+                        <strong>{{ recent_workout.workout_name }}</strong>
+                        {% if recent_workout.duration %} for {{ recent_workout.duration }} mins{% endif %}
+                        {% if recent_workout.calories_burned %} ({{ recent_workout.calories_burned }} kcal){% endif %}
+                    </p>
+                    <p class="card-text"><small class="text-muted">Logged: {{ recent_workout.log_time.strftime('%b %d, %H:%M') }}</small></p>
+                    {% if recent_workout.notes %}
+                    <p class="card-text fst-italic text-muted small">Notes: {{ recent_workout.notes }}</p>
+                    {% endif %}
+                </div>
+                {% else %}
+                <p class="card-text text-muted flex-grow-1">No workouts logged yet.</p>
+                {% endif %}
+                <!-- Changed button text and link -->
+                <a href="{{ url_for('my_workouts') }}" class="btn btn-primary mt-auto">Log/View Workouts</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Meal Log -->
+    <div class="col-md-6 col-lg-4">
+        <div class="card h-100 shadow-sm">
+            <div class="card-body d-flex flex-column">
+                <h2 class="card-title h5 mb-3">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-journal-check me-2" viewBox="0 0 16 16"> <path fill-rule="evenodd" d="M10.854 6.146a.5.5 0 0 1 0 .708l-3 3a.5.5 0 0 1-.708 0l-1.5-1.5a.5.5 0 1 1 .708-.708L7.5 8.793l2.646-2.647a.5.5 0 0 1 .708 0"/> <path d="M3 0h10a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2v-1h1v1a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1H3a1 1 0 0 0-1 1v1H1V2a2 2 0 0 1 2-2"/> <path d="M1 5v-.5a.5.5 0 0 1 1 0V5h.5a.5.5 0 0 1 0 1h-2a.5.5 0 0 1 0-1zm0 3v-.5a.5.5 0 0 1 1 0V8h.5a.5.5 0 0 1 0 1h-2a.5.5 0 0 1 0-1zm0 3v-.5a.5.5 0 0 1 1 0v.5h.5a.5.5 0 0 1 0 1h-2a.5.5 0 0 1 0-1z"/> </svg>
+                    Last Meal Logged
+                </h2>
+                 {% if recent_meal %}
+                 <div class="flex-grow-1"> <!-- Wrap content -->
+                    <p class="card-text mb-1">
+                        <!-- Added ID -->
+                        <strong id="last-meal-name">{{ recent_meal.meal_name }}</strong>
+                        <!-- Added ID -->
+                        <span id="last-meal-details">({{ recent_meal.calories }} kcal)</span>
+                        {% if recent_meal.meal_type %} <span class="badge bg-light text-dark">{{ recent_meal.meal_type }}</span>{% endif %}
+                    </p>
+                     <!-- Show Macros if available -->
+                     <p class="card-text small text-muted mb-1">
+                        {% if recent_meal.protein is not none %}P: {{ recent_meal.protein|round(1) }}g {% endif %}
+                        {% if recent_meal.carbs is not none %}C: {{ recent_meal.carbs|round(1) }}g {% endif %}
+                        {% if recent_meal.fat is not none %}F: {{ recent_meal.fat|round(1) }}g {% endif %}
+                        {% if recent_meal.fiber is not none %}Fib: {{ recent_meal.fiber|round(1) }}g {% endif %}
+                        {% if recent_meal.sugar is not none %}Sug: {{ recent_meal.sugar|round(1) }}g {% endif %}
+                     </p>
+                     <!-- Added ID -->
+                     <p class="card-text"><small class="text-muted" id="last-meal-time">Logged: {{ recent_meal.log_time.strftime('%b %d, %H:%M') }}</small></p>
+                    {% if recent_meal.notes %}
+                    <p class="card-text fst-italic text-muted small">Notes: {{ recent_meal.notes }}</p>
+                    {% endif %}
+                 </div>
+                {% else %}
+                <p class="card-text text-muted flex-grow-1">No meals logged yet.</p>
+                {% endif %}
+                <!-- Changed to button triggering modal -->
+                <button type="button" class="btn btn-primary mt-auto" data-bs-toggle="modal" data-bs-target="#logMealModal">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-plus-circle me-1" viewBox="0 0 16 16">
+                      <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14m0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16"/>
+                      <path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4"/>
+                    </svg>
+                    Log New Meal
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Progress Overview -->
+    <div class="col-lg-8"> <!-- Adjusted column width -->
+        <div class="card h-100 shadow-sm">
+            <div class="card-body d-flex flex-column"> <!-- Added flex column -->
+                <h2 class="card-title h5 mb-3">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-graph-up me-2" viewBox="0 0 16 16"> <path fill-rule="evenodd" d="M0 0h1v15h15v1H0zm14.817 3.113a.5.5 0 0 1 .07.704l-4.5 5.5a.5.5 0 0 1-.74.037L7.06 6.767l-3.656 5.027a.5.5 0 0 1-.808-.588l4-5.5a.5.5 0 0 1 .758-.06l2.609 2.61 4.15-5.073a.5.5 0 0 1 .704-.07"/> </svg>
+                    Progress Overview
+                </h2>
+                {% if latest_weight %}
+                    <p class="card-text">
+                        Current Weight: <strong>{{ latest_weight }} kg</strong>
+                        {% if goal_weight %}
+                            <span class="ms-2 text-muted">(Goal: {{ goal_weight }} kg)</span>
+                        {% endif %}
+                    </p>
+                {% else %}
+                <p class="card-text text-muted">Update your profile with your current weight to start tracking progress.</p>
+                {% endif %}
+                <!-- Chart Canvas -->
+                <div class="flex-grow-1 mt-3" style="position: relative; min-height: 200px;"> <!-- Ensure container has height -->
+                    {% if weight_chart_labels and weight_chart_data %}
+                        <canvas id="weightChart"></canvas>
+                    {% else %}
+                        <div class="bg-light rounded p-4 text-center text-muted d-flex align-items-center justify-content-center h-100">
+                            <span>Log your weight in your profile to see the chart.</span>
+                        </div>
+                    {% endif %}
+                </div>
+                 <a href="{{ url_for('profile') }}" class="btn btn-outline-secondary mt-3">Update Weight in Profile</a> <!-- Changed link and text -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Community Feed -->
+    <div class="col-lg-4"> <!-- Adjusted column width -->
+        <div class="card h-100 shadow-sm">
+            <div class="card-body d-flex flex-column">
+                 <h2 class="card-title h5 mb-4">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-people me-2" viewBox="0 0 16 16"> <path d="M15 14v1H1v-1a3 3 0 0 1 3-3h8a3 3 0 0 1 3 3M11 6a3 3 0 1 1-6 0 3 3 0 0 1 6 0m-9 8c0 1 1 1 1 1h5.256A4.5 4.5 0 0 1 8 12.5a4.5 4.5 0 0 1 1.544-3.393Q8.844 9.002 8 9c-5 0-6 3-6 4"/> </svg>
+                    Community Feed
+                </h2>
+                <p class="card-text text-muted">Updates from friends and community challenges will appear here.</p>
+                 <!-- Placeholder for feed items -->
+                 <div class="list-group list-group-flush mt-3 flex-grow-1"> <!-- Added flex-grow-1 -->
+                    <div class="list-group-item d-flex align-items-start px-0"> <!-- Removed padding -->
+                        <span class="badge bg-primary rounded-pill me-3 p-2">JD</span>
+                        <div>
+                            <div class="fw-bold">John Doe</div>
+                            Completed a 5k run in 25 minutes!
+                            <small class="d-block text-muted">2 hours ago</small>
+                        </div>
+                    </div>
+                     <div class="list-group-item d-flex align-items-start px-0"> <!-- Removed padding -->
+                        <span class="badge bg-secondary rounded-pill me-3 p-2">MS</span>
+                        <div>
+                            <div class="fw-bold">Maria Smith</div>
+                            Lost 5 pounds this month! 🎉
+                            <small class="d-block text-muted">1 day ago</small>
+                        </div>
+                    </div>
+                    <!-- Add more placeholder items or a message -->
+                     <div class="list-group-item px-0 text-muted text-center small">
+                        More updates coming soon...
+                    </div>
+                </div>
+                 <a href="#" class="btn btn-outline-secondary mt-auto disabled">View Community (Coming Soon)</a> <!-- Placeholder button -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Log Meal Modal -->
+<div class="modal fade" id="logMealModal" tabindex="-1" aria-labelledby="logMealModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg"> <!-- Larger modal -->
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="logMealModalLabel">Log New Meal</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <!-- Adapted Form from track_meal.html -->
+        <form id="ajaxMealLogForm"> <!-- Added ID -->
+            <!-- CSRF Token if needed for AJAX POST - Use Jinja comment -->
+            {# <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"> #}
+
+            <div class="row mb-3">
+                <div class="col-md-8 position-relative">
+                    <label for="modal_meal_name" class="form-label">Meal Name / Search Food</label>
+                    <input type="text" class="form-control" id="modal_meal_name" name="meal_name" required placeholder="Search food..." autocomplete="off">
+                    <div id="modal-food-suggestions" class="list-group position-absolute w-100 mt-1" style="z-index: 1056;"></div> <!-- Higher z-index for modal -->
+                </div>
+                <div class="col-md-4">
+                    <label for="modal_meal_type" class="form-label">Meal Type</label>
+                    <select class="form-select" id="modal_meal_type" name="meal_type" required>
+                        <option value="" selected>Select...</option>
+                        <option value="Breakfast">Breakfast</option>
+                        <option value="Lunch">Lunch</option>
+                        <option value="Dinner">Dinner</option>
+                        <option value="Snack">Snack</option>
+                    </select>
+                </div>
+            </div>
+             <div class="row g-3 mb-3">
+                 <div class="col-md-4 col-6">
+                    <label for="modal_calories" class="form-label">Calories (kcal)</label>
+                    <input type="number" class="form-control" id="modal_calories" name="calories" min="0" required>
+                </div>
+                 <div class="col-md-4 col-6">
+                    <label for="modal_protein" class="form-label">Protein (g)</label>
+                    <input type="number" step="0.1" class="form-control" id="modal_protein" name="protein" min="0">
+                </div>
+                 <div class="col-md-4 col-6">
+                    <label for="modal_carbs" class="form-label">Carbs (g)</label>
+                    <input type="number" step="0.1" class="form-control" id="modal_carbs" name="carbs" min="0">
+                </div>
+                 <div class="col-md-4 col-6">
+                    <label for="modal_fat" class="form-label">Fat (g)</label>
+                    <input type="number" step="0.1" class="form-control" id="modal_fat" name="fat" min="0">
+                </div>
+                 <div class="col-md-4 col-6">
+                    <label for="modal_fiber" class="form-label">Fiber (g)</label>
+                    <input type="number" step="0.1" class="form-control" id="modal_fiber" name="fiber" min="0">
+                </div>
+                 <div class="col-md-4 col-6">
+                    <label for="modal_sugar" class="form-label">Sugar (g)</label>
+                    <input type="number" step="0.1" class="form-control" id="modal_sugar" name="sugar" min="0">
+                </div>
+             </div>
+             <div class="mb-3">
+                <label for="modal_notes" class="form-label">Notes (optional)</label>
+                <textarea class="form-control" id="modal_notes" name="notes" rows="2"></textarea>
+            </div>
+            <div id="modal-log-error" class="alert alert-danger d-none" role="alert"></div> <!-- Error message area -->
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+        <!-- Submit button triggers form submission -->
+        <button type="submit" form="ajaxMealLogForm" class="btn btn-primary">Log Meal</button>
+      </div>
+    </div>
+  </div>
+</div>
+<!-- End Log Meal Modal -->
+
+{% endblock %}
+
+{% block scripts %}
+<!-- Include Chart.js if not already in base.html -->
+<!-- <script src="https://cdn.jsdelivr.net/npm/chart.js"></script> -->
+<script>
+    // --- Weight Chart ---
+    const weightLabels = {{ weight_chart_labels | tojson | safe }};
+    const weightData = {{ weight_chart_data | tojson | safe }};
+    const weightChartCanvas = document.getElementById('weightChart');
+
+    if (weightChartCanvas && weightLabels && weightData && weightLabels.length > 0) {
+        const ctxWeight = weightChartCanvas.getContext('2d');
+        const weightChart = new Chart(ctxWeight, {
+            type: 'line',
+            data: {
+                labels: weightLabels,
+                datasets: [{
+                    label: 'Weight (kg)',
+                    data: weightData,
+                    borderColor: 'rgb(13, 110, 253)', // Bootstrap primary blue
+                    backgroundColor: 'rgba(13, 110, 253, 0.1)',
+                    tension: 0.1, // Makes the line slightly curved
+                    fill: true // Optional: fill area under the line
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false, // Allow chart to fill container height/width
+                scales: {
+                    y: {
+                        beginAtZero: false, // Don't force y-axis to start at 0
+                        title: {
+                            display: true,
+                            text: 'Weight (kg)'
+                        }
+                    },
+                    x: {
+                         title: {
+                            display: true,
+                            text: 'Date'
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        display: false // Hide legend if only one dataset
+                    },
+                    tooltip: {
+                        mode: 'index',
+                        intersect: false,
+                    }
+                }
+            }
+        });
+    }
+    // --- End Weight Chart ---
+
+
+    // --- AJAX Meal Logging ---
+    const mealLogForm = document.getElementById('ajaxMealLogForm');
+    const logMealModalElement = document.getElementById('logMealModal');
+    const logMealModal = new bootstrap.Modal(logMealModalElement); // Get modal instance
+    const modalLogError = document.getElementById('modal-log-error');
+
+    // --- Modal Search/Suggestion Logic ---
+    const modalMealNameInput = document.getElementById('modal_meal_name');
+    const modalSuggestionsContainer = document.getElementById('modal-food-suggestions');
+    const modalCaloriesInput = document.getElementById('modal_calories');
+    const modalProteinInput = document.getElementById('modal_protein');
+    const modalCarbsInput = document.getElementById('modal_carbs');
+    const modalFatInput = document.getElementById('modal_fat');
+    const modalFiberInput = document.getElementById('modal_fiber');
+    const modalSugarInput = document.getElementById('modal_sugar');
+    const modalMealTypeSelect = document.getElementById('modal_meal_type');
+    let modalDebounceTimer;
+    let modalCurrentSuggestions = [];
+
+    modalMealNameInput.addEventListener('input', () => {
+        clearTimeout(modalDebounceTimer);
+        const query = modalMealNameInput.value;
+        if (query.length < 2) {
+            modalSuggestionsContainer.innerHTML = ''; return;
+        }
+        modalDebounceTimer = setTimeout(() => {
+            fetch(`{{ url_for('search_food') }}?q=${encodeURIComponent(query)}`)
+                .then(response => response.json())
+                .then(suggestions => {
+                    modalCurrentSuggestions = suggestions;
+                    modalSuggestionsContainer.innerHTML = '';
+                    if (suggestions.length > 0) {
+                        suggestions.forEach((suggestion, index) => {
+                            const item = document.createElement('a');
+                            item.href = '#';
+                            item.classList.add('list-group-item', 'list-group-item-action');
+                            item.textContent = suggestion.name;
+                             if (suggestion.serving_description) {
+                                const detailSpan = document.createElement('small');
+                                detailSpan.classList.add('text-muted', 'ms-2');
+                                detailSpan.textContent = `(${suggestion.serving_description})`;
+                                item.appendChild(detailSpan);
+                            }
+                            item.dataset.index = index;
+                            item.addEventListener('click', (e) => {
+                                e.preventDefault();
+                                const selectedIndex = e.target.closest('a').dataset.index;
+                                const selectedFood = modalCurrentSuggestions[selectedIndex];
+                                modalMealNameInput.value = selectedFood.name;
+                                modalCaloriesInput.value = selectedFood.calories || '';
+                                modalProteinInput.value = selectedFood.protein || '';
+                                modalCarbsInput.value = selectedFood.carbs || '';
+                                modalFatInput.value = selectedFood.fat || '';
+                                modalFiberInput.value = selectedFood.fiber || '';
+                                modalSugarInput.value = selectedFood.sugar || '';
+                                if (selectedFood.meal_type) { // Check if meal_type exists
+                                    modalMealTypeSelect.value = selectedFood.meal_type;
+                                }
+                                modalSuggestionsContainer.innerHTML = '';
+                            });
+                            modalSuggestionsContainer.appendChild(item);
+                        });
+                    } else {
+                         const noResult = document.createElement('span');
+                         noResult.classList.add('list-group-item', 'text-muted');
+                         noResult.textContent = 'No food found';
+                         modalSuggestionsContainer.appendChild(noResult);
+                    }
+                }).catch(error => console.error('Error fetching modal suggestions:', error));
+        }, 300);
+    });
+
+     // Hide suggestions when clicking outside the input/suggestions in the modal
+    document.addEventListener('click', (e) => {
+        const isClickInsideModal = logMealModalElement.contains(e.target);
+        if (isClickInsideModal && !modalMealNameInput.contains(e.target) && !modalSuggestionsContainer.contains(e.target)) {
+            modalSuggestionsContainer.innerHTML = '';
+        }
+    });
+
+    // Clear suggestions and form when modal is closed
+    logMealModalElement.addEventListener('hidden.bs.modal', function (event) {
+        modalSuggestionsContainer.innerHTML = '';
+        mealLogForm.reset(); // Reset form fields
+        modalLogError.classList.add('d-none'); // Hide error message
+    });
+    // --- End Modal Search/Suggestion Logic ---
+
+
+    // --- Form Submission Logic ---
+    if (mealLogForm) {
+        mealLogForm.addEventListener('submit', function(event) {
+            console.log("Submit event listener fired for form#ajaxMealLogForm.");
+            event.preventDefault();
+            console.log("Default form submission prevented.");
+            modalLogError.classList.add('d-none'); // Hide previous errors
+
+            const formData = new FormData(mealLogForm);
+
+            fetch("{{ url_for('track_meal_ajax') }}", {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => {
+                 console.log("Received response from /track/meal_ajax:", response.status);
+                 if (!response.ok) {
+                     return response.json().then(errData => {
+                         throw new Error(errData.message || `HTTP error! status: ${response.status}`);
+                     }).catch(() => {
+                         throw new Error(`HTTP error! status: ${response.status}`);
+                     });
+                 }
+                 return response.json();
+            })
+            .then(data => {
+                console.log("Parsed JSON data:", data);
+                if (data.success) {
+                    console.log("AJAX log successful. Calling updateDashboardSummary...");
+                    // Add meal name and calories from form data for Last Meal Card update
+                    data.last_meal_name = formData.get('meal_name');
+                    data.last_meal_calories = formData.get('calories');
+                    updateDashboardSummary(data);
+                    logMealModal.hide(); // Hide modal on success
+                    showFlashMessage('Meal logged successfully!', 'success');
+                } else {
+                    console.error("AJAX log failed:", data.message);
+                    modalLogError.textContent = data.message || 'Failed to log meal. Please check inputs.';
+                    modalLogError.classList.remove('d-none');
+                }
+            })
+            .catch(error => {
+                console.error('Error logging meal via fetch:', error);
+                modalLogError.textContent = error.message || 'An error occurred while logging the meal. Please try again.';
+                modalLogError.classList.remove('d-none');
+            });
+        });
+    } else {
+        console.error("Could not find meal log form with ID 'ajaxMealLogForm' to attach listener.");
+    }
+    // --- End Form Submission Logic ---
+
+
+    // --- Dashboard Update Functions ---
+    function updateDashboardSummary(data) {
+        console.log("Inside updateDashboardSummary. Data:", data);
+
+        // Update text values for consumed nutrients
+        const calConsumedEl = document.getElementById('calories-consumed');
+        const protConsumedEl = document.getElementById('protein-consumed');
+        const carbConsumedEl = document.getElementById('carbs-consumed');
+        const fatConsumedEl = document.getElementById('fat-consumed');
+        const netCalEl = document.getElementById('net-calories');
+        const calBurnedEl = document.getElementById('calories-burned');
+
+        // Update goal values (in case they changed)
+        const calGoalEl = document.getElementById('calories-goal');
+        const protGoalEl = document.getElementById('protein-goal');
+        const carbGoalEl = document.getElementById('carbs-goal');
+        const fatGoalEl = document.getElementById('fat-goal');
+
+        // Check if elements exist before updating
+        if (calConsumedEl) calConsumedEl.textContent = Math.round(data.calories_consumed || 0);
+        if (protConsumedEl) protConsumedEl.textContent = (data.protein_consumed != null ? data.protein_consumed.toFixed(1) : '0.0');
+        if (carbConsumedEl) carbConsumedEl.textContent = (data.carbs_consumed != null ? data.carbs_consumed.toFixed(1) : '0.0');
+        if (fatConsumedEl) fatConsumedEl.textContent = (data.fat_consumed != null ? data.fat_consumed.toFixed(1) : '0.0');
+        if (netCalEl) netCalEl.textContent = Math.round(data.net_calories || 0);
+        if (calBurnedEl) calBurnedEl.textContent = Math.round(data.calories_burned || 0);
+
+        if (calGoalEl) calGoalEl.textContent = data.goal_calories || '?';
+        if (protGoalEl) protGoalEl.textContent = data.goal_protein || '?';
+        if (carbGoalEl) carbGoalEl.textContent = data.goal_carbs || '?';
+        if (fatGoalEl) fatGoalEl.textContent = data.goal_fat || '?';
+
+        // Update progress bars
+        console.log("Updating progress bars...");
+        updateProgressBar('calories', data.calories_consumed, data.goal_calories);
+        updateProgressBar('protein', data.protein_consumed, data.goal_protein);
+        updateProgressBar('carbs', data.carbs_consumed, data.goal_carbs);
+        updateProgressBar('fat', data.fat_consumed, data.goal_fat);
+        console.log("Progress bar update finished.");
+
+        // Also update the Last Meal card
+        updateLastMealCard(data.last_meal_name || '', data.last_meal_calories || '');
+    }
+
+    function updateProgressBar(type, consumed, goal) {
+        const progressBar = document.getElementById(`${type}-progress-bar`);
+        const progressPercentEl = document.getElementById(`${type}-progress-percent`);
+
+        // Ensure consumed and goal are valid numbers
+        consumed = consumed != null ? Number(consumed) : 0;
+        goal = goal != null ? Number(goal) : 0;
+
+        console.log(`Updating progress bar for ${type}: Consumed=${consumed}, Goal=${goal}`);
+
+        if (!progressBar) {
+            console.warn(`Progress bar element '${type}-progress-bar' not found.`);
+            return;
+        }
+
+        let progress = 0;
+        if (goal && goal > 0) {
+            progress = Math.round((consumed / goal) * 100);
+        } else {
+            console.log(`Goal for ${type} is zero or undefined, setting progress to 0.`);
+        }
+
+        // Handle NaN or Infinity
+        if (isNaN(progress) || !isFinite(progress)) {
+            progress = 0;
+        }
+
+        const displayProgress = Math.min(progress, 100); // Cap at 100% for display
+
+        // Update the bar
+        progressBar.style.width = `${displayProgress}%`;
+        progressBar.setAttribute('aria-valuenow', consumed.toFixed(type === 'calories' ? 0 : 1));
+
+        // Update percentage display for calories
+        if (progressPercentEl && type === 'calories') {
+            progressPercentEl.textContent = displayProgress;
+        }
+
+        // Change color based on progress for calories bar
+        if (type === 'calories') {
+            if (progress > 100) {
+                progressBar.classList.remove('bg-success');
+                progressBar.classList.add('bg-danger');
+            } else {
+                progressBar.classList.remove('bg-danger');
+                progressBar.classList.add('bg-success');
+            }
+        }
+
+        console.log(`Set ${type} progress bar width to ${displayProgress}%`);
+    }
+
+    function updateLastMealCard(mealName, calories) {
+        const lastMealNameEl = document.getElementById('last-meal-name');
+        const lastMealDetailsEl = document.getElementById('last-meal-details');
+        const lastMealTimeEl = document.getElementById('last-meal-time');
+
+        if (lastMealNameEl && mealName) {
+            lastMealNameEl.textContent = mealName;
+        }
+
+        if (lastMealDetailsEl && calories) {
+            lastMealDetailsEl.textContent = `(${calories} kcal)`;
+        }
+
+        if (lastMealTimeEl) {
+            // Update timestamp to now
+            const now = new Date();
+            // Format: Month Day, HH:MM (e.g., Aug 15, 14:30)
+            const formattedTime = now.toLocaleString('default', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false });
+            lastMealTimeEl.textContent = `Logged: ${formattedTime}`;
+        }
+
+        // Update or add other details like macros if needed
+        // Example: Find the parent div and update the macro paragraph
+        const lastMealCardBody = lastMealNameEl ? lastMealNameEl.closest('.flex-grow-1') : null;
+        if (lastMealCardBody) {
+            let macroP = lastMealCardBody.querySelector('.small.text-muted');
+            if (!macroP) { // If the paragraph doesn't exist (e.g., first meal logged)
+                macroP = document.createElement('p');
+                macroP.className = 'card-text small text-muted mb-1';
+                // Insert it after the main meal details paragraph
+                const mainP = lastMealNameEl.closest('p');
+                if (mainP && mainP.nextSibling) {
+                    mainP.parentNode.insertBefore(macroP, mainP.nextSibling);
+                } else if (mainP) {
+                    mainP.parentNode.appendChild(macroP);
+                }
+            }
+            // Clear existing macros and add new ones if available in data (requires backend change)
+            // macroP.textContent = 'P: ... C: ... F: ...'; // Update based on data received
+        }
+
+
+        console.log("Updated Last Meal card.");
+    }
+
+    // Function to dynamically show flash messages
+    function showFlashMessage(message, category = 'info') {
+        const flashContainer = document.getElementById('flash-messages');
+        if (!flashContainer) {
+            console.error("Flash message container 'flash-messages' not found.");
+            // Optionally create container if it doesn't exist
+            // const newContainer = document.createElement('div');
+            // newContainer.id = 'flash-messages';
+            // newContainer.className = 'position-fixed top-0 start-50 translate-middle-x pt-3 z-index-toast';
+            // document.body.appendChild(newContainer);
+            // flashContainer = newContainer;
+            return; // Exit if container not found and not created
+        }
+
+        const alertDiv = document.createElement('div');
+        alertDiv.className = `alert alert-${category} alert-dismissible fade show`;
+        alertDiv.setAttribute('role', 'alert'); // Add role for accessibility
+        alertDiv.innerHTML = `
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        `;
+
+        flashContainer.appendChild(alertDiv);
+
+        // Auto-dismiss after 5 seconds using Bootstrap's alert instance
+        const bsAlert = new bootstrap.Alert(alertDiv);
+        setTimeout(() => {
+            bsAlert.close();
+        }, 5000);
+    }
+    // --- End Dashboard Update Functions ---
+
+</script>
+{% endblock %}

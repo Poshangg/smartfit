@@ -1,0 +1,167 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8 col-xl-6">
+        <h1 class="display-6 mb-4 text-center">Log Meal</h1>
+        <div class="card shadow-sm">
+             <div class="card-body p-4">
+                 <form method="POST" action="{{ url_for('track_meal') }}" id="logMealForm"> <!-- Added ID to form -->
+                    <div class="mb-3 position-relative"> <!-- Added position-relative for dropdown positioning -->
+                        <label for="meal_name" class="form-label">Meal Name / Search Food</label>
+                        <input type="text" class="form-control" id="meal_name" name="meal_name" required placeholder="Search food (e.g., '1 medium apple', 'grilled chicken breast')" value="{{ meal_name_prefill or '' }}" autocomplete="off">
+                        <!-- Container for suggestions dropdown -->
+                        <div id="food-suggestions" class="list-group position-absolute w-100" style="z-index: 1000;"></div>
+                    </div>
+                     <div class="mb-3">
+                        <label for="meal_type" class="form-label">Meal Type</label>
+                        <!-- Use prefill variable -->
+                        <select class="form-select" id="meal_type" name="meal_type" required>
+                            <option value="" {% if not meal_type_prefill %}selected{% endif %}>Select...</option>
+                            <option value="Breakfast" {% if meal_type_prefill == 'Breakfast' %}selected{% endif %}>Breakfast</option>
+                            <option value="Lunch" {% if meal_type_prefill == 'Lunch' %}selected{% endif %}>Lunch</option>
+                            <option value="Dinner" {% if meal_type_prefill == 'Dinner' %}selected{% endif %}>Dinner</option>
+                            <option value="Snack" {% if meal_type_prefill == 'Snack' %}selected{% endif %}>Snack</option>
+                        </select>
+                    </div>
+                     <div class="row g-3 mb-3"> <!-- Grid for nutrition -->
+                         <div class="col-md-4 col-6"> <!-- Adjusted grid columns -->
+                            <label for="calories" class="form-label">Calories (kcal)</label>
+                            <!-- Use prefill variable -->
+                            <input type="number" class="form-control" id="calories" name="calories" min="0" required value="{{ calories_prefill or '' }}">
+                        </div>
+                         <div class="col-md-4 col-6">
+                            <label for="protein" class="form-label">Protein (g)</label>
+                            <!-- Use prefill variable -->
+                            <input type="number" step="0.1" class="form-control" id="protein" name="protein" min="0" value="{{ protein_prefill or '' }}">
+                        </div>
+                         <div class="col-md-4 col-6">
+                            <label for="carbs" class="form-label">Carbs (g)</label>
+                            <!-- Use prefill variable -->
+                            <input type="number" step="0.1" class="form-control" id="carbs" name="carbs" min="0" value="{{ carbs_prefill or '' }}">
+                        </div>
+                         <div class="col-md-4 col-6">
+                            <label for="fat" class="form-label">Fat (g)</label>
+                            <!-- Use prefill variable -->
+                            <input type="number" step="0.1" class="form-control" id="fat" name="fat" min="0" value="{{ fat_prefill or '' }}">
+                        </div>
+                         <!-- Added Fiber -->
+                         <div class="col-md-4 col-6">
+                            <label for="fiber" class="form-label">Fiber (g)</label>
+                            <!-- Use prefill variable -->
+                            <input type="number" step="0.1" class="form-control" id="fiber" name="fiber" min="0" value="{{ fiber_prefill or '' }}">
+                        </div>
+                         <!-- Added Sugar -->
+                         <div class="col-md-4 col-6">
+                            <label for="sugar" class="form-label">Sugar (g)</label>
+                            <!-- Use prefill variable -->
+                            <input type="number" step="0.1" class="form-control" id="sugar" name="sugar" min="0" value="{{ sugar_prefill or '' }}">
+                        </div>
+                     </div>
+                     <div class="mb-3">
+                        <label for="notes" class="form-label">Notes (optional)</label>
+                        <!-- Use prefill variable -->
+                        <textarea class="form-control" id="notes" name="notes" rows="2" placeholder="e.g., Added extra spinach">{{ notes_prefill or '' }}</textarea>
+                    </div>
+                    <div class="d-grid"> <!-- Full width button -->
+                        <button type="submit" class="btn btn-primary btn-lg">Log Meal</button> <!-- Use primary blue -->
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+    const mealNameInput = document.getElementById('meal_name');
+    const suggestionsContainer = document.getElementById('food-suggestions');
+    const form = document.getElementById('logMealForm'); // Get form elements by ID
+    const caloriesInput = document.getElementById('calories');
+    const proteinInput = document.getElementById('protein');
+    const carbsInput = document.getElementById('carbs');
+    const fatInput = document.getElementById('fat');
+    const fiberInput = document.getElementById('fiber');
+    const sugarInput = document.getElementById('sugar');
+    const mealTypeSelect = document.getElementById('meal_type'); // Get meal type select
+
+    let debounceTimer;
+    let currentSuggestions = []; // Store fetched suggestions
+
+    mealNameInput.addEventListener('input', () => {
+        clearTimeout(debounceTimer);
+        const query = mealNameInput.value;
+
+        if (query.length < 2) {
+            suggestionsContainer.innerHTML = ''; // Clear suggestions if query is too short
+            return;
+        }
+
+        debounceTimer = setTimeout(() => {
+            fetch(`{{ url_for('search_food') }}?q=${encodeURIComponent(query)}`)
+                .then(response => response.json())
+                .then(suggestions => {
+                    currentSuggestions = suggestions; // Store the full suggestion objects
+                    suggestionsContainer.innerHTML = ''; // Clear previous suggestions
+                    if (suggestions.length > 0) {
+                        suggestions.forEach((suggestion, index) => {
+                            const item = document.createElement('a');
+                            item.href = '#'; // Prevent page jump
+                            item.classList.add('list-group-item', 'list-group-item-action');
+                            item.textContent = suggestion.name;
+                            if (suggestion.serving_description) {
+                                const detailSpan = document.createElement('small');
+                                detailSpan.classList.add('text-muted', 'ms-2');
+                                detailSpan.textContent = `(${suggestion.serving_description})`;
+                                item.appendChild(detailSpan);
+                            }
+                            item.dataset.index = index; // Store index to retrieve full object later
+
+                            item.addEventListener('click', (e) => {
+                                e.preventDefault(); // Prevent link navigation
+                                const selectedIndex = e.target.closest('a').dataset.index;
+                                const selectedMeal = currentSuggestions[selectedIndex];
+
+                                // Populate the form fields
+                                mealNameInput.value = selectedMeal.name;
+                                caloriesInput.value = selectedMeal.calories || '';
+                                proteinInput.value = selectedMeal.protein || '';
+                                carbsInput.value = selectedMeal.carbs || '';
+                                fatInput.value = selectedMeal.fat || '';
+                                fiberInput.value = selectedMeal.fiber || '';
+                                sugarInput.value = selectedMeal.sugar || '';
+                                // Optionally set meal type
+                                if (selectedMeal.meal_type) {
+                                    mealTypeSelect.value = selectedMeal.meal_type;
+                                }
+
+
+                                suggestionsContainer.innerHTML = ''; // Clear suggestions after selection
+                            });
+                            suggestionsContainer.appendChild(item);
+                        });
+                    } else {
+                         const noResult = document.createElement('span');
+                         noResult.classList.add('list-group-item', 'text-muted', 'py-2', 'px-3');
+                         noResult.textContent = 'No food found';
+                         suggestionsContainer.appendChild(noResult);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching meal suggestions:', error);
+                    suggestionsContainer.innerHTML = ''; // Clear on error
+                });
+        }, 300); // Debounce delay
+    });
+
+    // Optional: Hide suggestions when clicking outside
+    document.addEventListener('click', (e) => {
+        if (!mealNameInput.contains(e.target) && !suggestionsContainer.contains(e.target)) {
+            suggestionsContainer.innerHTML = '';
+        }
+    });
+
+</script>
+{% endblock %}

@@ -1,0 +1,430 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1 class="display-6 mb-4">User Profile</h1>
+
+<div class="card shadow-sm mb-4">
+    <div class="card-header">
+        <h2 class="h5 mb-0">Welcome, {{ current_user.username }}!</h2>
+    </div>
+    <div class="card-body">
+        <form method="POST" action="{{ url_for('profile') }}">
+            <h3 class="h5 mb-3">Basic Information</h3>
+            <div class="row g-3 mb-4"> <!-- Use Bootstrap grid and gutters -->
+                <div class="col-md-6">
+                    <label for="email" class="form-label">Email</label>
+                    <input type="email" id="email" name="email" value="{{ current_user.email }}" disabled readonly class="form-control-plaintext ps-2"> <!-- Use form-control-plaintext for disabled look -->
+                    <!-- <p class="form-text">Email cannot be changed here.</p> -->
+                </div>
+                <div class="col-md-6">
+                    <label for="username" class="form-label">Username</label>
+                    <input type="text" id="username" name="username" value="{{ current_user.username }}" disabled readonly class="form-control-plaintext ps-2">
+                     <!-- <p class="form-text">Username cannot be changed here.</p> -->
+                </div>
+                <div class="col-md-6">
+                    <label for="weight" class="form-label">Current Weight (kg)</label>
+                    <input type="number" step="0.1" id="weight" name="weight" value="{{ profile_data.weight or '' }}" class="form-control">
+                </div>
+                <div class="col-md-6">
+                    <label for="goal_weight" class="form-label">Goal Weight (kg)</label>
+                    <input type="number" step="0.1" id="goal_weight" name="goal_weight" value="{{ profile_data.goal_weight or '' }}" class="form-control" placeholder="Optional">
+                </div>
+                <div class="col-md-6">
+                    <label for="height" class="form-label">Height (cm)</label>
+                    <input type="number" step="0.1" id="height" name="height" value="{{ profile_data.height or '' }}" class="form-control">
+                </div>
+                 <div class="col-12"> <!-- Full width for goal -->
+                    <label for="goal" class="form-label">Primary Goal</label>
+                    <input type="text" id="goal" name="goal" value="{{ profile_data.goal or '' }}" placeholder="e.g., Lose 5kg, Run a 10k, Build Muscle" class="form-control">
+                </div>
+                 <div class="col-md-6">
+                    <label for="fitness_level" class="form-label">Fitness Level</label>
+                    <select id="fitness_level" name="fitness_level" class="form-select"> <!-- Use form-select -->
+                        <option value="" {% if not profile_data.fitness_level %}selected{% endif %}>Select...</option>
+                        <option value="Beginner" {% if profile_data.fitness_level == 'Beginner' %}selected{% endif %}>Beginner</option>
+                        <option value="Intermediate" {% if profile_data.fitness_level == 'Intermediate' %}selected{% endif %}>Intermediate</option>
+                        <option value="Advanced" {% if profile_data.fitness_level == 'Advanced' %}selected{% endif %}>Advanced</option>
+                    </select>
+                </div>
+                 <div class="col-md-6">
+                    <label for="dietary_preferences" class="form-label">Dietary Preferences</label>
+                    <input type="text" id="dietary_preferences" name="dietary_preferences" value="{{ profile_data.dietary_preferences or '' }}" placeholder="e.g., Vegan, Keto, Low-Carb, None" class="form-control">
+                </div>
+            </div>
+
+            <h3 class="h5 mb-3">Nutrition Goals</h3>
+             <div class="row g-3 mb-4">
+                <div class="col-md-6 col-lg-3">
+                    <label for="goal_calories" class="form-label">Daily Calories (kcal)</label>
+                    <input type="number" id="goal_calories" name="goal_calories" value="{{ profile_data.goal_calories or '' }}" class="form-control" min="0">
+                </div>
+                <div class="col-md-6 col-lg-3">
+                    <label for="goal_protein" class="form-label">Daily Protein (g)</label>
+                    <input type="number" id="goal_protein" name="goal_protein" value="{{ profile_data.goal_protein or '' }}" class="form-control" min="0">
+                </div>
+                <div class="col-md-6 col-lg-3">
+                    <label for="goal_carbs" class="form-label">Daily Carbs (g)</label>
+                    <input type="number" id="goal_carbs" name="goal_carbs" value="{{ profile_data.goal_carbs or '' }}" class="form-control" min="0">
+                </div>
+                <div class="col-md-6 col-lg-3">
+                    <label for="goal_fat" class="form-label">Daily Fat (g)</label>
+                    <input type="number" id="goal_fat" name="goal_fat" value="{{ profile_data.goal_fat or '' }}" class="form-control" min="0">
+                </div>
+            </div>
+
+            <button type="submit" class="btn btn-primary"> <!-- Use primary blue button -->
+                Update Profile
+            </button>
+        </form>
+    </div>
+</div>
+
+<!-- Weight History Chart Card -->
+<div class="card shadow-sm mb-4">
+    <div class="card-header">
+        <h2 class="h5 mb-0">Weight History</h2>
+    </div>
+    <div class="card-body">
+        {% if weight_chart_labels and weight_chart_data %}
+            <div style="height: 300px;"> <!-- Set a fixed height for the chart container -->
+                <canvas id="profileWeightChart"></canvas>
+            </div>
+        {% else %}
+            <p class="text-muted mb-0">No weight history logged yet. Update your weight in the form above to start tracking.</p>
+        {% endif %}
+    </div>
+</div> <!-- End Weight History Chart Card -->
+
+<!-- Workout Progress Chart Card -->
+<div class="card shadow-sm mb-4">
+    <div class="card-header">
+        <h2 class="h5 mb-0">Workout Activity (Last 30 Days)</h2>
+    </div>
+    <div class="card-body">
+        {% if progress_chart_labels and progress_chart_data %}
+            <div style="height: 300px;"> <!-- Set a fixed height for the chart container -->
+                <canvas id="profileProgressChart"></canvas>
+            </div>
+        {% else %}
+            <p class="text-muted mb-0">No workouts logged in the last 30 days.</p>
+        {% endif %}
+    </div>
+</div> <!-- End Workout Progress Chart Card -->
+
+<!-- Calorie Intake Progress Chart Card -->
+<div class="card shadow-sm mb-4">
+     <div class="card-header">
+        <h2 class="h5 mb-0">My Progress: Calorie Intake vs. Goal (Last 30 Days)</h2>
+    </div>
+    <div class="card-body">
+        {% if calorie_progress_labels and calorie_progress_data %}
+            <div style="height: 300px;"> <!-- Set a fixed height for the chart container -->
+                <canvas id="profileCalorieProgressChart"></canvas>
+            </div>
+             {% if not calorie_goal %}
+             <p class="text-muted small mt-2">Set a <a href="#goal_calories">daily calorie goal</a> in your profile for comparison.</p>
+             {% endif %}
+        {% else %}
+            <p class="text-muted mb-0">No meal data logged in the last 30 days to show progress.</p>
+        {% endif %}
+    </div>
+</div> <!-- End Calorie Intake Progress Chart Card -->
+
+<div class="card shadow-sm">
+     <div class="card-header">
+        <h2 class="h5 mb-0">Saved Workouts & Meals</h2>
+    </div>
+    <div class="card-body">
+        <p class="text-muted">Lists of saved items will appear here.</p>
+        <!-- Example list -->
+        <ul class="list-group list-group-flush">
+            <li class="list-group-item">Workout: Full Body Strength</li>
+            <li class="list-group-item">Meal: Grilled Chicken Salad</li>
+        </ul>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<!-- Include Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+<!-- Include chartjs-plugin-annotation -->
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@^1.4.0"></script> <!-- Check for latest version -->
+
+<script>
+    // --- Profile Weight Chart ---
+    const weightLabels = {{ weight_chart_labels | tojson | safe }};
+    const weightData = {{ weight_chart_data | tojson | safe }};
+    const profileWeightCanvas = document.getElementById('profileWeightChart');
+
+    if (profileWeightCanvas && weightLabels && weightData && weightLabels.length > 0) {
+        const ctxWeight = profileWeightCanvas.getContext('2d');
+        const profileWeightChart = new Chart(ctxWeight, {
+            type: 'line',
+            data: {
+                labels: weightLabels,
+                datasets: [{
+                    label: 'Weight (kg)',
+                    data: weightData,
+                    borderColor: 'rgb(75, 192, 192)',
+                    backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                    tension: 0.1, // Adds a slight curve to the line
+                    fill: true, // Fill area under the line
+                    pointRadius: 3,
+                    pointHoverRadius: 5
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false, // Important for fixed height container
+                scales: {
+                    x: {
+                        type: 'time', // Use time scale for dates
+                        time: {
+                            unit: 'day', // Display unit
+                            tooltipFormat: 'yyyy-MM-dd', // Format for tooltips
+                            displayFormats: {
+                                day: 'MMM d' // Format for axis labels
+                            }
+                        },
+                        title: {
+                            display: true,
+                            text: 'Date'
+                        }
+                    },
+                    y: {
+                        beginAtZero: false, // Don't force Y axis to start at 0
+                        title: {
+                            display: true,
+                            text: 'Weight (kg)'
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        display: false // Hide legend as there's only one dataset
+                    },
+                    tooltip: {
+                        mode: 'index',
+                        intersect: false,
+                        callbacks: {
+                            label: function(context) {
+                                let label = context.dataset.label || '';
+                                if (label) {
+                                    label += ': ';
+                                }
+                                if (context.parsed.y !== null) {
+                                    label += context.parsed.y.toFixed(1) + ' kg'; // Format tooltip value
+                                }
+                                return label;
+                            }
+                        }
+                    }
+                },
+                interaction: {
+                    mode: 'index',
+                    intersect: false,
+                }
+            }
+        });
+    } else if (profileWeightCanvas) {
+        // Optional: Display a message on the canvas if no data
+        const ctx = profileWeightCanvas.getContext('2d');
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillStyle = '#6c757d'; // Bootstrap text-muted color
+        ctx.font = '16px sans-serif';
+        ctx.fillText('No weight data available', profileWeightCanvas.width / 2, profileWeightCanvas.height / 2);
+    }
+
+    // --- Profile Workout Progress Chart ---
+    const progressLabels = {{ progress_chart_labels | tojson | safe }};
+    const progressData = {{ progress_chart_data | tojson | safe }};
+    const profileProgressCanvas = document.getElementById('profileProgressChart');
+
+    if (profileProgressCanvas && progressLabels && progressData && progressLabels.length > 0) {
+        const ctxProgress = profileProgressCanvas.getContext('2d');
+        const profileProgressChart = new Chart(ctxProgress, {
+            type: 'bar', // Bar chart to show count per day
+            data: {
+                labels: progressLabels,
+                datasets: [{
+                    label: 'Workouts Logged',
+                    data: progressData,
+                    backgroundColor: 'rgba(54, 162, 235, 0.6)', // Blue bars
+                    borderColor: 'rgba(54, 162, 235, 1)',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false, // Important for fixed height container
+                scales: {
+                    x: {
+                        type: 'time',
+                        time: {
+                            unit: 'day',
+                            tooltipFormat: 'yyyy-MM-dd',
+                            displayFormats: {
+                                day: 'MMM d'
+                            }
+                        },
+                        title: {
+                            display: true,
+                            text: 'Date'
+                        }
+                    },
+                    y: {
+                        beginAtZero: true, // Start Y axis at 0
+                        ticks: {
+                            stepSize: 1 // Ensure ticks are whole numbers for counts
+                        },
+                        title: {
+                            display: true,
+                            text: 'Number of Workouts'
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        display: false // Hide legend for single dataset
+                    },
+                    tooltip: {
+                        mode: 'index',
+                        intersect: false,
+                         callbacks: {
+                            label: function(context) {
+                                let label = context.dataset.label || '';
+                                if (label) {
+                                    label += ': ';
+                                }
+                                if (context.parsed.y !== null) {
+                                    label += context.parsed.y; // Show the count
+                                }
+                                return label;
+                            }
+                        }
+                    }
+                },
+                interaction: {
+                    mode: 'index',
+                    intersect: false,
+                }
+            }
+        });
+    } else if (profileProgressCanvas) {
+        // Optional: Display a message on the canvas if no data
+        const ctx = profileProgressCanvas.getContext('2d');
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillStyle = '#6c757d'; // Bootstrap text-muted color
+        ctx.font = '16px sans-serif';
+        ctx.fillText('No workout data available', profileProgressCanvas.width / 2, profileProgressCanvas.height / 2);
+    }
+
+    // --- Profile Calorie Intake Progress Chart ---
+    const calorieProgressLabels = {{ calorie_progress_labels | tojson | safe }};
+    const calorieProgressData = {{ calorie_progress_data | tojson | safe }};
+    const calorieGoal = {{ calorie_goal | tojson | safe }}; // Get goal from Flask
+    const profileCalorieProgressCanvas = document.getElementById('profileCalorieProgressChart');
+
+    if (profileCalorieProgressCanvas && calorieProgressLabels && calorieProgressData && calorieProgressLabels.length > 0) {
+        const ctxCalorieProgress = profileCalorieProgressCanvas.getContext('2d');
+
+        const chartDatasets = [{
+            label: 'Calories Consumed (kcal)',
+            data: calorieProgressData,
+            borderColor: 'rgba(255, 99, 132, 1)', // Red
+            backgroundColor: 'rgba(255, 99, 132, 0.2)',
+            tension: 0.1,
+            fill: false, // Don't fill under this line
+            pointRadius: 2,
+            pointHoverRadius: 4
+        }];
+
+        // Prepare annotation for the goal line
+        const annotationOptions = {};
+        if (calorieGoal !== null && calorieGoal > 0) {
+            annotationOptions.annotations = {
+                goalLine: {
+                    type: 'line',
+                    yMin: calorieGoal,
+                    yMax: calorieGoal,
+                    borderColor: 'rgb(75, 192, 192)', // Teal color for goal
+                    borderWidth: 2,
+                    borderDash: [6, 6], // Dashed line
+                    label: {
+                        content: `Goal: ${calorieGoal} kcal`,
+                        enabled: true,
+                        position: 'end', // Position label at the end of the line
+                        backgroundColor: 'rgba(75, 192, 192, 0.8)',
+                        font: {
+                            size: 10
+                        },
+                        yAdjust: -10 // Adjust label position slightly above the line
+                    }
+                }
+            };
+        }
+
+
+        const profileCalorieProgressChart = new Chart(ctxCalorieProgress, {
+            type: 'line',
+            data: {
+                labels: calorieProgressLabels,
+                datasets: chartDatasets
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: {
+                        type: 'time',
+                        time: {
+                            unit: 'day',
+                            tooltipFormat: 'yyyy-MM-dd',
+                            displayFormats: {
+                                day: 'MMM d'
+                            }
+                        },
+                        title: {
+                            display: true,
+                            text: 'Date'
+                        }
+                    },
+                    y: {
+                        beginAtZero: true, // Start Y axis at 0 for calories
+                        title: {
+                            display: true,
+                            text: 'Calories (kcal)'
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        display: true // Show legend for consumed vs goal
+                    },
+                    tooltip: {
+                        mode: 'index',
+                        intersect: false,
+                    },
+                    annotation: annotationOptions // Add the annotation configuration
+                },
+                interaction: {
+                    mode: 'index',
+                    intersect: false,
+                }
+            }
+        });
+    } else if (profileCalorieProgressCanvas) {
+        // Optional: Display a message on the canvas if no data
+        const ctx = profileCalorieProgressCanvas.getContext('2d');
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillStyle = '#6c757d'; // Bootstrap text-muted color
+        ctx.font = '16px sans-serif';
+        ctx.fillText('No calorie data available', profileCalorieProgressCanvas.width / 2, profileCalorieProgressCanvas.height / 2);
+    }
+</script>
+{% endblock %}

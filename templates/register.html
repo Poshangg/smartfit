@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row justify-content-center mt-5">
+    <div class="col-md-8 col-lg-6"> <!-- Wider column for more fields -->
+         <div class="card shadow-sm">
+            <div class="card-body p-4 p-lg-5">
+                <div class="text-center mb-4">
+                     <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" fill="currentColor" class="bi bi-activity text-primary mb-2" viewBox="0 0 16 16">
+                        <path fill-rule="evenodd" d="M6 2a.5.5 0 0 1 .47.33L10 12.036l1.53-4.208A.5.5 0 0 1 12 7.5h3.5a.5.5 0 0 1 0 1h-3.15l-1.88 5.17a.5.5 0 0 1-.94 0L6 3.964 4.47 8.171A.5.5 0 0 1 4 8.5H.5a.5.5 0 0 1 0-1h3.15l1.88-5.17A.5.5 0 0 1 6 2"/>
+                     </svg>
+                    <h1 class="h3 mb-3 fw-normal">Create your SmartFit Account</h1>
+                </div>
+
+                <!-- Flash messages handled in base.html -->
+
+                <form method="POST" action="{{ url_for('register') }}">
+                    <h2 class="h5 mb-3">Account Information</h2>
+                    <div class="form-floating mb-3">
+                        <input type="text" class="form-control" id="username" name="username" placeholder="Username" required>
+                        <label for="username">Username</label>
+                    </div>
+                     <div class="form-floating mb-3">
+                        <input type="email" class="form-control" id="email" name="email" placeholder="name@example.com" required>
+                        <label for="email">Email address</label>
+                    </div>
+                    <div class="form-floating mb-3">
+                        <input type="password" class="form-control" id="password" name="password" placeholder="Password" required>
+                        <label for="password">Password</label>
+                    </div>
+                    <!-- Add password confirmation later if needed -->
+                    <!-- ... -->
+
+                    <hr class="my-4"> <!-- Separator -->
+
+                    <h2 class="h5 mb-3">Basic Profile</h2> <!-- Removed (Optional) -->
+                    <p class="text-muted small mb-3">Help us personalize your experience. You can update this later in your profile.</p>
+
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label for="weight" class="form-label">Current Weight (kg)</label>
+                            <input type="number" step="0.1" id="weight" name="weight" class="form-control" placeholder="e.g., 70.5" required> <!-- Added required -->
+                        </div>
+                        <div class="col-md-6">
+                            <label for="goal_weight" class="form-label">Goal Weight (kg)</label>
+                            <input type="number" step="0.1" id="goal_weight" name="goal_weight" class="form-control" placeholder="Optional"> <!-- Goal weight remains optional -->
+                        </div>
+                        <div class="col-md-6">
+                            <label for="height" class="form-label">Height (cm)</label>
+                            <input type="number" step="0.1" id="height" name="height" class="form-control" placeholder="e.g., 175" required> <!-- Added required -->
+                        </div>
+                         <div class="col-md-6">
+                            <label for="fitness_level" class="form-label">Fitness Level</label>
+                            <select id="fitness_level" name="fitness_level" class="form-select" required> <!-- Added required -->
+                                <option value="" selected disabled>Select...</option> <!-- Changed default option -->
+                                <option value="Beginner">Beginner</option>
+                                <option value="Intermediate">Intermediate</option>
+                                <option value="Advanced">Advanced</option>
+                            </select>
+                        </div>
+                         <div class="col-12">
+                            <label for="goal" class="form-label">Primary Goal</label>
+                            <input type="text" id="goal" name="goal" placeholder="e.g., Lose Weight, Build Muscle, Run a 10k" class="form-control" required> <!-- Added required -->
+                        </div>
+                         <div class="col-12">
+                            <label for="dietary_preferences" class="form-label">Dietary Preferences</label>
+                            <input type="text" id="dietary_preferences" name="dietary_preferences" placeholder="Optional (e.g., Vegan, Keto, None)" class="form-control"> <!-- Dietary preferences remain optional -->
+                        </div>
+                    </div>
+
+
+                    <button class="w-100 btn btn-lg btn-primary mt-4" type="submit">Register</button>
+
+                    <p class="mt-4 mb-0 text-center text-muted">
+                        Already have an account? <a href="{{ url_for('login') }}" class="text-primary">Login here</a>
+                    </p>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8 col-xl-6">
+        <h1 class="display-6 mb-4 text-center">Log Workout Instance</h1>
+        <div class="card shadow-sm">
+            <div class="card-body p-4">
+                <!-- Form posts back to the same route -->
+                <form method="POST" action="{{ url_for('log_workout_instance') }}">
+                    <div class="mb-3">
+                        <label for="workout_name" class="form-label">Workout Name / Type</label>
+                        <!-- Pre-fill workout name, make it readonly -->
+                        <input type="text" class="form-control" id="workout_name" name="workout_name" required value="{{ workout_name_prefill or '' }}" readonly>
+                    </div>
+                     <div class="mb-3">
+                        <label for="duration" class="form-label">Duration (minutes)</label>
+                        <!-- Pre-fill duration -->
+                        <input type="number" class="form-control" id="duration" name="duration" required min="1" value="{{ duration_prefill or '' }}">
+                    </div>
+                     <div class="mb-3">
+                        <label for="calories_burned" class="form-label">Calories Burned (optional)</label>
+                        <input type="number" class="form-control" id="calories_burned" name="calories_burned" min="0">
+                    </div>
+                     <div class="mb-3">
+                        <label for="notes" class="form-label">Notes (optional)</label>
+                        <textarea class="form-control" id="notes" name="notes" rows="3" placeholder="e.g., Felt strong today, increased weight on bench press"></textarea>
+                    </div>
+                    <div class="d-grid"> <!-- Full width button -->
+                        <button type="submit" class="btn btn-primary btn-lg">Log Workout</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

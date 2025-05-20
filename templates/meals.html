@@ -1,0 +1,543 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1 class="display-6 mb-4">Meal Log & Nutrition</h1> <!-- Updated Title -->
+<!-- Add flash message container -->
+<div id="flash-messages" class="position-fixed top-0 start-50 translate-middle-x pt-3 z-index-toast" style="z-index: 1080;"></div>
+
+<div class="row">
+    <div class="col-lg-8">
+        <!-- Nutrition Goals Card -->
+        <div class="card shadow-sm mb-4">
+            <div class="card-header">
+                <h2 class="h5 mb-0">Your Daily Nutrition Goals</h2>
+            </div>
+            <div class="card-body">
+                {% if profile and (profile.goal_calories or profile.goal_protein or profile.goal_carbs or profile.goal_fat) %}
+                    <div class="row text-center">
+                        <div class="col">
+                            <div><strong>Calories</strong></div>
+                            <div>{{ profile.goal_calories or 'N/A' }} kcal</div>
+                        </div>
+                        <div class="col">
+                            <div><strong>Protein</strong></div>
+                            <div>{{ profile.goal_protein or 'N/A' }} g</div>
+                        </div>
+                        <div class="col">
+                            <div><strong>Carbs</strong></div>
+                            <div>{{ profile.goal_carbs or 'N/A' }} g</div>
+                        </div>
+                        <div class="col">
+                            <div><strong>Fat</strong></div>
+                            <div>{{ profile.goal_fat or 'N/A' }} g</div>
+                        </div>
+                    </div>
+                {% else %}
+                    <p class="text-muted mb-0">You haven't set specific nutrition goals yet. <a href="{{ url_for('profile') }}">Update your profile</a> to set them.</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Nutrition Progress Chart Card (7 Days) -->
+        <div class="card shadow-sm mb-4">
+            <div class="card-header">
+                <h2 class="h5 mb-0">Recent Nutrition Intake (Last 7 Days)</h2>
+            </div>
+            <div class="card-body">
+                {% if chart_labels %}
+                    <canvas id="nutritionChart"></canvas> <!-- Keep ID for 7-day chart -->
+                {% else %}
+                     <p class="text-muted mb-0">Not enough data to display chart. Log some meals!</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Today's Meal History Card -->
+        <div class="card shadow-sm mb-4">
+             <div class="card-header">
+                <h2 class="h5 mb-0">Today's Meal History</h2>
+            </div>
+            <div class="card-body">
+                {% if ordered_grouped_meals %}
+                    {% for meal_type, meals_in_group in ordered_grouped_meals.items() %}
+                        <div class="mb-4"> <!-- Add margin bottom for spacing between groups -->
+                            <h3 class="h6 text-muted border-bottom pb-2 mb-3">{{ meal_type or 'Uncategorized' }}</h3>
+                            {% if meals_in_group %}
+                                <ul class="list-group list-group-flush">
+                                    {% for meal in meals_in_group %}
+                                    <li class="list-group-item px-0"> <!-- Remove padding for flush look -->
+                                        <div class="d-flex w-100 justify-content-between">
+                                            <span class="fw-bold">{{ meal.meal_name }}</span>
+                                            <small class="text-muted">{{ meal.log_time.strftime('%H:%M') }}</small>
+                                        </div>
+                                        <small class="text-muted">
+                                            {{ meal.calories }} kcal
+                                            {% if meal.protein is not none %} | P: {{ meal.protein|round(1) }}g{% endif %}
+                                            {% if meal.carbs is not none %} | C: {{ meal.carbs|round(1) }}g{% endif %}
+                                            {% if meal.fat is not none %} | F: {{ meal.fat|round(1) }}g{% endif %}
+                                        </small>
+                                        {% if meal.notes %}
+                                            <p class="mb-0 mt-1 fst-italic small text-muted">Notes: {{ meal.notes }}</p>
+                                        {% endif %}
+                                        <!-- Add Edit/Delete buttons later if needed -->
+                                    </li>
+                                    {% endfor %}
+                                </ul>
+                            {% else %}
+                                <!-- This case shouldn't happen with the current Python logic, but good practice -->
+                                <p class="text-muted small">No meals logged for {{ meal_type or 'Uncategorized' }} today.</p>
+                            {% endif %}
+                        </div>
+                    {% endfor %}
+                {% else %}
+                    <p class="text-muted mb-0">No meals logged yet today. Use the 'Log Meal' button to start!</p>
+                {% endif %}
+            </div>
+        </div> <!-- End Today's Meal History Card -->
+
+    </div> <!-- End col-lg-8 -->
+
+    <div class="col-lg-4">
+        <!-- Today's Nutrition Summary Card -->
+        <div class="card shadow-sm mb-4">
+            <div class="card-header">
+                <h2 class="h5 mb-0">Today's Summary</h2>
+            </div>
+            <div class="card-body">
+                <div class="text-center mb-3">
+                    <h3 class="display-6">{{ today_calories|round|int }}</h3>
+                    <p class="text-muted mb-0">Total Calories</p>
+                </div>
+                <div class="row text-center mb-3">
+                    <div class="col">
+                        <div><strong>{{ today_protein|round(1) }}g</strong></div>
+                        <div class="small text-muted">Protein</div>
+                    </div>
+                    <div class="col">
+                        <div><strong>{{ today_carbs|round(1) }}g</strong></div>
+                        <div class="small text-muted">Carbs</div>
+                    </div>
+                    <div class="col">
+                        <div><strong>{{ today_fat|round(1) }}g</strong></div>
+                        <div class="small text-muted">Fat</div>
+                    </div>
+                </div>
+                <div style="height: 200px;"> <!-- Container for pie chart -->
+                    {% if today_protein > 0 or today_carbs > 0 or today_fat > 0 %}
+                        <canvas id="dailyMacroPieChart"></canvas>
+                    {% else %}
+                        <p class="text-muted text-center small pt-5">Log meals to see macro breakdown.</p>
+                    {% endif %}
+                </div>
+                 <div class="d-grid mt-3">
+                     <!-- Replace link with modal trigger button -->
+                     <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#logMealModal">
+                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-plus-circle me-1" viewBox="0 0 16 16">
+                           <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14m0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16"/>
+                           <path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4"/>
+                         </svg>
+                         Log Meal
+                     </button>
+                 </div>
+            </div>
+        </div>
+
+        <!-- Today's Logged Meals Card - REMOVED as history is now in the main column -->
+        <!--
+        <div class="card shadow-sm mb-4">
+            ...
+        </div>
+        -->
+    </div> <!-- End col-lg-4 -->
+</div>
+
+<!-- Log Meal Modal (Copied from index.html) -->
+<div class="modal fade" id="logMealModal" tabindex="-1" aria-labelledby="logMealModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg"> <!-- Larger modal -->
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="logMealModalLabel">Log New Meal</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <!-- Form for AJAX submission -->
+        <form id="ajaxMealLogForm">
+            {# <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"> #}
+
+            <div class="row mb-3">
+                <div class="col-md-8 position-relative">
+                    <label for="modal_meal_name" class="form-label">Meal Name / Search Food</label>
+                    <input type="text" class="form-control" id="modal_meal_name" name="meal_name" required placeholder="Search food..." autocomplete="off">
+                    <div id="modal-food-suggestions" class="list-group position-absolute w-100 mt-1" style="z-index: 1056;"></div> <!-- Higher z-index for modal -->
+                </div>
+                <div class="col-md-4">
+                    <label for="modal_meal_type" class="form-label">Meal Type</label>
+                    <select class="form-select" id="modal_meal_type" name="meal_type" required>
+                        <option value="" selected>Select...</option>
+                        <option value="Breakfast">Breakfast</option>
+                        <option value="Lunch">Lunch</option>
+                        <option value="Dinner">Dinner</option>
+                        <option value="Snack">Snack</option>
+                    </select>
+                </div>
+            </div>
+             <div class="row g-3 mb-3">
+                 <div class="col-md-4 col-6">
+                    <label for="modal_calories" class="form-label">Calories (kcal)</label>
+                    <input type="number" class="form-control" id="modal_calories" name="calories" min="0" required>
+                </div>
+                 <div class="col-md-4 col-6">
+                    <label for="modal_protein" class="form-label">Protein (g)</label>
+                    <input type="number" step="0.1" class="form-control" id="modal_protein" name="protein" min="0">
+                </div>
+                 <div class="col-md-4 col-6">
+                    <label for="modal_carbs" class="form-label">Carbs (g)</label>
+                    <input type="number" step="0.1" class="form-control" id="modal_carbs" name="carbs" min="0">
+                </div>
+                 <div class="col-md-4 col-6">
+                    <label for="modal_fat" class="form-label">Fat (g)</label>
+                    <input type="number" step="0.1" class="form-control" id="modal_fat" name="fat" min="0">
+                </div>
+                 <div class="col-md-4 col-6">
+                    <label for="modal_fiber" class="form-label">Fiber (g)</label>
+                    <input type="number" step="0.1" class="form-control" id="modal_fiber" name="fiber" min="0">
+                </div>
+                 <div class="col-md-4 col-6">
+                    <label for="modal_sugar" class="form-label">Sugar (g)</label>
+                    <input type="number" step="0.1" class="form-control" id="modal_sugar" name="sugar" min="0">
+                </div>
+             </div>
+             <div class="mb-3">
+                <label for="modal_notes" class="form-label">Notes (optional)</label>
+                <textarea class="form-control" id="modal_notes" name="notes" rows="2"></textarea>
+            </div>
+            <div id="modal-log-error" class="alert alert-danger d-none" role="alert"></div> <!-- Error message area -->
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+        <!-- Submit button triggers form submission -->
+        <button type="submit" form="ajaxMealLogForm" class="btn btn-primary">Log Meal</button>
+      </div>
+    </div>
+  </div>
+</div>
+<!-- End Log Meal Modal -->
+
+{% endblock %}
+
+{% block scripts %}
+<!-- Include Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    // --- 7-Day Nutrition Chart ---
+    const chartLabels7Day = {{ chart_labels | tojson | safe }}; // Renamed variable
+    const chartData7Day = {{ chart_data | tojson | safe }};     // Renamed variable
+
+    if (chartLabels7Day && chartData7Day && document.getElementById('nutritionChart')) {
+        const ctx7Day = document.getElementById('nutritionChart').getContext('2d');
+        const nutritionChart7Day = new Chart(ctx7Day, {
+            type: 'bar', // Use 'line' or 'bar'
+            data: {
+                labels: chartLabels7Day,
+                datasets: [
+                    {
+                        label: 'Calories (kcal)',
+                        data: chartData7Day.calories,
+                        borderColor: 'rgba(255, 99, 132, 1)', // Red
+                        backgroundColor: 'rgba(255, 99, 132, 0.5)',
+                        yAxisID: 'yCalories', // Assign to a specific Y axis
+                        type: 'line', // Make calories a line on the bar chart
+                        order: 0 // Draw line on top
+                    },
+                    {
+                        label: 'Protein (g)',
+                        data: chartData7Day.protein,
+                        borderColor: 'rgba(54, 162, 235, 1)', // Blue
+                        backgroundColor: 'rgba(54, 162, 235, 0.5)',
+                        yAxisID: 'yMacros', // Assign to the other Y axis
+                        order: 1
+                    },
+                    {
+                        label: 'Carbs (g)',
+                        data: chartData7Day.carbs,
+                        borderColor: 'rgba(255, 206, 86, 1)', // Yellow
+                        backgroundColor: 'rgba(255, 206, 86, 0.5)',
+                        yAxisID: 'yMacros',
+                        order: 1
+                    },
+                    {
+                        label: 'Fat (g)',
+                        data: chartData7Day.fat,
+                        borderColor: 'rgba(75, 192, 192, 1)', // Green
+                        backgroundColor: 'rgba(75, 192, 192, 0.5)',
+                        yAxisID: 'yMacros',
+                        order: 1
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false, // Allow chart to fill container height
+                scales: {
+                    yCalories: { // Define the Y axis for calories
+                        type: 'linear',
+                        display: true,
+                        position: 'left',
+                        title: {
+                            display: true,
+                            text: 'Calories (kcal)'
+                        }
+                    },
+                    yMacros: { // Define the Y axis for macros
+                        type: 'linear',
+                        display: true,
+                        position: 'right',
+                        title: {
+                            display: true,
+                            text: 'Macronutrients (g)'
+                        },
+                        grid: {
+                            drawOnChartArea: false, // only want the grid lines for one axis to show up
+                        },
+                    }
+                },
+                plugins: {
+                    tooltip: {
+                        mode: 'index',
+                        intersect: false,
+                    }
+                }
+            }
+        });
+    }
+
+    // --- Daily Macro Pie Chart ---
+    const todayProtein = {{ today_protein or 0 }};
+    const todayCarbs = {{ today_carbs or 0 }};
+    const todayFat = {{ today_fat or 0 }};
+    const dailyPieCanvas = document.getElementById('dailyMacroPieChart');
+
+    // Only render pie chart if there's data and the canvas exists
+    if (dailyPieCanvas && (todayProtein > 0 || todayCarbs > 0 || todayFat > 0)) {
+        const ctxPie = dailyPieCanvas.getContext('2d');
+        const dailyMacroPieChart = new Chart(ctxPie, {
+            type: 'pie',
+            data: {
+                labels: ['Protein (g)', 'Carbs (g)', 'Fat (g)'],
+                datasets: [{
+                    label: 'Daily Macros',
+                    data: [todayProtein, todayCarbs, todayFat],
+                    backgroundColor: [
+                        'rgba(54, 162, 235, 0.7)', // Blue for Protein
+                        'rgba(255, 206, 86, 0.7)', // Yellow for Carbs
+                        'rgba(75, 192, 192, 0.7)'  // Green for Fat
+                    ],
+                    borderColor: [
+                        'rgba(54, 162, 235, 1)',
+                        'rgba(255, 206, 86, 1)',
+                        'rgba(75, 192, 192, 1)'
+                    ],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'top', // Or 'bottom', 'left', 'right'
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                let label = context.label || '';
+                                if (label) {
+                                    label += ': ';
+                                }
+                                if (context.parsed !== null) {
+                                    label += context.parsed.toFixed(1) + 'g';
+                                }
+                                return label;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    // --- AJAX Meal Logging Modal Logic (Copied & Adapted from index.html) ---
+    const mealLogForm = document.getElementById('ajaxMealLogForm');
+    const logMealModalElement = document.getElementById('logMealModal');
+    const logMealModal = new bootstrap.Modal(logMealModalElement); // Get modal instance
+    const modalLogError = document.getElementById('modal-log-error');
+
+    // --- Modal Search/Suggestion Logic ---
+    const modalMealNameInput = document.getElementById('modal_meal_name');
+    const modalSuggestionsContainer = document.getElementById('modal-food-suggestions');
+    const modalCaloriesInput = document.getElementById('modal_calories');
+    const modalProteinInput = document.getElementById('modal_protein');
+    const modalCarbsInput = document.getElementById('modal_carbs');
+    const modalFatInput = document.getElementById('modal_fat');
+    const modalFiberInput = document.getElementById('modal_fiber');
+    const modalSugarInput = document.getElementById('modal_sugar');
+    const modalMealTypeSelect = document.getElementById('modal_meal_type');
+    let modalDebounceTimer;
+    let modalCurrentSuggestions = [];
+
+    modalMealNameInput.addEventListener('input', () => {
+        clearTimeout(modalDebounceTimer);
+        const query = modalMealNameInput.value;
+        if (query.length < 2) {
+            modalSuggestionsContainer.innerHTML = ''; return;
+        }
+        modalDebounceTimer = setTimeout(() => {
+            fetch(`{{ url_for('search_food') }}?q=${encodeURIComponent(query)}`)
+                .then(response => response.json())
+                .then(suggestions => {
+                    modalCurrentSuggestions = suggestions;
+                    modalSuggestionsContainer.innerHTML = '';
+                    if (suggestions.length > 0) {
+                        suggestions.forEach((suggestion, index) => {
+                            const item = document.createElement('a');
+                            item.href = '#';
+                            item.classList.add('list-group-item', 'list-group-item-action');
+                            item.textContent = suggestion.name;
+                             if (suggestion.serving_description) {
+                                const detailSpan = document.createElement('small');
+                                detailSpan.classList.add('text-muted', 'ms-2');
+                                detailSpan.textContent = `(${suggestion.serving_description})`;
+                                item.appendChild(detailSpan);
+                            }
+                            item.dataset.index = index;
+                            item.addEventListener('click', (e) => {
+                                e.preventDefault();
+                                const selectedIndex = e.target.closest('a').dataset.index;
+                                const selectedFood = modalCurrentSuggestions[selectedIndex];
+                                modalMealNameInput.value = selectedFood.name;
+                                modalCaloriesInput.value = selectedFood.calories || '';
+                                modalProteinInput.value = selectedFood.protein || '';
+                                modalCarbsInput.value = selectedFood.carbs || '';
+                                modalFatInput.value = selectedFood.fat || '';
+                                modalFiberInput.value = selectedFood.fiber || '';
+                                modalSugarInput.value = selectedFood.sugar || '';
+                                if (selectedFood.meal_type) {
+                                    modalMealTypeSelect.value = selectedFood.meal_type;
+                                }
+                                modalSuggestionsContainer.innerHTML = '';
+                            });
+                            modalSuggestionsContainer.appendChild(item);
+                        });
+                    } else {
+                         const noResult = document.createElement('span');
+                         noResult.classList.add('list-group-item', 'text-muted');
+                         noResult.textContent = 'No food found';
+                         modalSuggestionsContainer.appendChild(noResult);
+                    }
+                }).catch(error => console.error('Error fetching modal suggestions:', error));
+        }, 300);
+    });
+
+     // Hide suggestions when clicking outside the input/suggestions in the modal
+    document.addEventListener('click', (e) => {
+        const isClickInsideModal = logMealModalElement.contains(e.target);
+        if (isClickInsideModal && !modalMealNameInput.contains(e.target) && !modalSuggestionsContainer.contains(e.target)) {
+            modalSuggestionsContainer.innerHTML = '';
+        }
+    });
+
+    // Clear suggestions and form when modal is closed
+    logMealModalElement.addEventListener('hidden.bs.modal', function (event) {
+        modalSuggestionsContainer.innerHTML = '';
+        mealLogForm.reset(); // Reset form fields
+        modalLogError.classList.add('d-none'); // Hide error message
+    });
+    // --- End Modal Search/Suggestion Logic ---
+
+
+    // --- Form Submission Logic ---
+    if (mealLogForm) {
+        mealLogForm.addEventListener('submit', function(event) {
+            event.preventDefault();
+            modalLogError.classList.add('d-none'); // Hide previous errors
+            const formData = new FormData(mealLogForm);
+
+            fetch("{{ url_for('track_meal_ajax') }}", {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => {
+                 if (!response.ok) {
+                     return response.json().then(errData => {
+                         throw new Error(errData.message || `HTTP error! status: ${response.status}`);
+                     }).catch(() => {
+                         throw new Error(`HTTP error! status: ${response.status}`);
+                     });
+                 }
+                 return response.json();
+            })
+            .then(data => {
+                if (data.success) {
+                    logMealModal.hide();
+                    // Show flash message *before* reloading
+                    // Store message in session storage to show after reload
+                    sessionStorage.setItem('flashMessage', JSON.stringify({ message: 'Meal logged successfully!', category: 'success' }));
+                    // Reload the page to update the summary and log list
+                    window.location.reload();
+                } else {
+                    modalLogError.textContent = data.message || 'Failed to log meal. Please check inputs.';
+                    modalLogError.classList.remove('d-none');
+                }
+            })
+            .catch(error => {
+                console.error('Error logging meal via fetch:', error);
+                modalLogError.textContent = error.message || 'An error occurred while logging the meal. Please try again.';
+                modalLogError.classList.remove('d-none');
+            });
+        });
+    } else {
+        console.error("Could not find meal log form with ID 'ajaxMealLogForm'.");
+    }
+    // --- End Form Submission Logic ---
+
+    // --- Flash Message Handling ---
+    // Function to dynamically show flash messages
+    function showFlashMessage(message, category = 'info') {
+        const flashContainer = document.getElementById('flash-messages');
+        if (!flashContainer) {
+            console.error("Flash message container 'flash-messages' not found.");
+            return;
+        }
+        const alertDiv = document.createElement('div');
+        alertDiv.className = `alert alert-${category} alert-dismissible fade show`;
+        alertDiv.setAttribute('role', 'alert');
+        alertDiv.innerHTML = `
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        `;
+        flashContainer.appendChild(alertDiv);
+        const bsAlert = new bootstrap.Alert(alertDiv);
+        setTimeout(() => {
+            bsAlert.close();
+        }, 5000);
+    }
+
+    // Check for flash message in session storage on page load
+    document.addEventListener('DOMContentLoaded', (event) => {
+        const flashData = sessionStorage.getItem('flashMessage');
+        if (flashData) {
+            try {
+                const { message, category } = JSON.parse(flashData);
+                showFlashMessage(message, category);
+                sessionStorage.removeItem('flashMessage'); // Clear after showing
+            } catch (e) {
+                console.error("Error parsing flash message from session storage:", e);
+                sessionStorage.removeItem('flashMessage'); // Clear invalid data
+            }
+        }
+    });
+    // --- End Flash Message Handling ---
+
+</script>
+{% endblock %}

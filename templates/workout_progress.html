@@ -1,0 +1,130 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-10 col-xl-8"> <!-- Slightly wider column for table -->
+        <!-- Heading includes the specific workout name -->
+        <h1 class="display-6 mb-4 text-center">Log & Progress: {{ workout_name }}</h1>
+
+        <!-- Logging Form Card -->
+        <div class="card shadow-sm mb-4">
+            <div class="card-header">
+                <h2 class="h5 mb-0">Log New Instance</h2>
+            </div>
+            <div class="card-body p-4">
+                <!-- Form posts back to the same route -->
+                <form method="POST" action="{{ url_for('workout_progress', workout_name=workout_name) }}">
+                    <div class="mb-3">
+                        <label for="workout_name_display" class="form-label">Workout</label>
+                        <!-- Display workout name, readonly -->
+                        <input type="text" class="form-control" id="workout_name_display" value="{{ workout_name }}" readonly>
+                    </div>
+                     <!-- Changed to Select Dropdown -->
+                     <div class="mb-3">
+                        <label for="intensity_level" class="form-label">Intensity Level</label>
+                        <select class="form-select" id="intensity_level" name="intensity_level">
+                            <option value="" selected>Select Intensity...</option>
+                            <option value="Very Light">Very Light (RPE 1-2)</option>
+                            <option value="Light">Light (RPE 3-4)</option>
+                            <option value="Moderate">Moderate (RPE 5-6)</option>
+                            <option value="High">High (RPE 7-8)</option>
+                            <option value="Very High">Very High (RPE 9)</option>
+                            <option value="Max Effort">Max Effort (RPE 10)</option>
+                            <option value="Other">Other (Specify in Notes)</option>
+                        </select>
+                    </div>
+                     <!-- Changed to Select Dropdown (Example Options) -->
+                     <div class="mb-3">
+                        <label for="repetitions" class="form-label">Repetitions / Sets</label>
+                         <select class="form-select" id="repetitions" name="repetitions">
+                            <option value="" selected>Select Rep/Set Scheme...</option>
+                            <option value="3 sets of 8-12 reps">3 sets of 8-12 reps</option>
+                            <option value="3 sets of 10 reps">3 sets of 10 reps</option>
+                            <option value="3 sets of 12 reps">3 sets of 12 reps</option>
+                            <option value="4 sets of 8 reps">4 sets of 8 reps</option>
+                            <option value="4 sets of 10 reps">4 sets of 10 reps</option>
+                            <option value="5 sets of 5 reps">5 sets of 5 reps</option>
+                            <option value="To Failure">To Failure</option>
+                            <option value="Other">Other (Specify in Notes)</option>
+                            <!-- Add more common schemes as needed -->
+                        </select>
+                        <!-- Optional: Add a separate input for weight if desired -->
+                        <!-- <label for="weight_lifted" class="form-label mt-2">Weight (optional)</label> -->
+                        <!-- <input type="text" class="form-control" id="weight_lifted" name="weight_lifted" placeholder="e.g., 50kg, 100lbs"> -->
+                    </div>
+                     <div class="mb-3">
+                        <label for="notes" class="form-label">Notes (optional)</label>
+                        <textarea class="form-control" id="notes" name="notes" rows="3" placeholder="e.g., Felt strong today, focused on form"></textarea>
+                    </div>
+                    <div class="d-grid"> <!-- Full width button -->
+                        <button type="submit" class="btn btn-primary btn-lg">Log This Session</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Progress Section Card -->
+        <div class="card shadow-sm">
+            <div class="card-header">
+                <!-- Renamed Header -->
+                <h2 class="h5 mb-0">Workout Progress</h2>
+            </div>
+            {% if logs %}
+            <div class="card-body p-0"> <!-- Remove padding for table flush look -->
+                 <!-- Basic Stats -->
+                 <div class="p-3 border-bottom">
+                     <p class="mb-1"><strong>Total Sessions Logged:</strong> {{ logs|length }}</p>
+                     <p class="mb-0"><strong>Last Session:</strong> {{ logs[0].log_time.strftime('%Y-%m-%d %H:%M') }}</p>
+                     <!-- Add more stats here later if needed -->
+                 </div>
+
+                 <!-- Progress Table -->
+                 <div class="table-responsive">
+                    <table class="table table-striped table-hover mb-0"> <!-- Added table classes -->
+                        <thead>
+                            <tr>
+                                <th scope="col">Date</th>
+                                <th scope="col">Intensity</th>
+                                <th scope="col">Reps/Sets</th>
+                                <th scope="col">Notes</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for log in logs %}
+                            <tr>
+                                <td class="text-nowrap">{{ log.log_time.strftime('%Y-%m-%d %H:%M') }}</td>
+                                <td>{{ log.intensity_level or 'N/A' }}</td>
+                                <td>{{ log.repetitions or 'N/A' }}</td>
+                                <td>{{ log.notes or '' }}</td>
+                                <!-- Add edit/delete links/buttons here later if needed -->
+                                <!-- <td><a href="#" class="btn btn-sm btn-outline-secondary">Edit</a></td> -->
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                 <!-- Placeholder for future chart -->
+                 <!-- <div class="p-3 mt-3 border-top">
+                     <h6 class="text-center text-muted">Progress Chart Area (Coming Soon)</h6>
+                     <canvas id="progressChart"></canvas>
+                 </div> -->
+            </div>
+            {% else %}
+            <div class="card-body">
+                <p class="text-muted mb-0">No progress logged for this workout yet.</p>
+            </div>
+            {% endif %}
+        </div>
+
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<!-- Add Chart.js CDN and script here later if implementing charts -->
+<!-- <script src="https://cdn.jsdelivr.net/npm/chart.js"></script> -->
+<!-- <script>
+    // Chart rendering logic would go here, using data passed from the backend
+    // or fetched via an API endpoint.
+</script> -->
+{% endblock %}

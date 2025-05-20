@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1 class="display-6 mb-4">Admin Dashboard</h1>
+
+<!-- Quick Stats/Links -->
+<div class="row g-4 mb-4">
+    <div class="col-md-4">
+        <div class="card text-center h-100 shadow-sm">
+            <div class="card-body">
+                <h5 class="card-title">User Management</h5>
+                <p class="card-text display-6">{{ users|length }}</p>
+                <a href="#userManagementTable" class="btn btn-outline-primary">View Users</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card text-center h-100 shadow-sm">
+            <div class="card-body">
+                <h5 class="card-title">Workout Library</h5>
+                <p class="card-text display-6">{{ workout_count }}</p> <!-- Use count passed from backend -->
+                <a href="{{ url_for('admin_workouts') }}" class="btn btn-outline-primary">Manage Workouts</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card text-center h-100 shadow-sm">
+            <div class="card-body">
+                <h5 class="card-title">Meal Library</h5>
+                <p class="card-text display-6">{{ meal_count }}</p> <!-- Use count passed from backend -->
+                <a href="{{ url_for('admin_meals') }}" class="btn btn-outline-primary">Manage Meals</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<div class="card shadow-sm" id="userManagementTable"> <!-- Added ID for anchor link -->
+    <div class="card-header">
+        <h2 class="h5 mb-0">User Management</h2>
+    </div>
+    <div class="card-body p-0"> <!-- Remove padding for table flush look -->
+        {% if users %}
+        <div class="table-responsive">
+            <table class="table table-striped table-hover mb-0 align-middle"> <!-- Added align-middle -->
+                <thead>
+                    <tr>
+                        <th scope="col">ID</th>
+                        <th scope="col">Username</th>
+                        <th scope="col">Email</th>
+                        <th scope="col">Current Role</th>
+                        <th scope="col" style="min-width: 250px;">Actions</th> <!-- Give actions more space -->
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for user in users %}
+                    <tr>
+                        <td>{{ user.id }}</td>
+                        <td>{{ user.username }}</td>
+                        <td>{{ user.email }}</td>
+                        <td><span class="badge bg-{{ 'primary' if user.role == 'admin' else 'secondary' }}">{{ user.role }}</span></td>
+                        <td>
+                            {% if user.id != current_user.id %} {# Prevent admin from changing/deleting own role #}
+                            <!-- Set Role Form -->
+                            <form action="{{ url_for('set_user_role', user_id=user.id) }}" method="POST" class="d-inline-flex align-items-center me-2">
+                                <select name="role" class="form-select form-select-sm me-2" style="width: auto;">
+                                    {% for role in available_roles %}
+                                    <option value="{{ role }}" {% if user.role == role %}selected{% endif %}>{{ role.capitalize() }}</option>
+                                    {% endfor %}
+                                </select>
+                                <button type="submit" class="btn btn-sm btn-outline-primary">Set Role</button>
+                            </form>
+                            <!-- Delete User Form -->
+                            <form action="{{ url_for('delete_user', user_id=user.id) }}" method="POST" class="d-inline" onsubmit="return confirm('Are you sure you want to delete user {{ user.username }}? This action cannot be undone.');">
+                                <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
+                            </form>
+                            {% else %}
+                            <span class="text-muted fst-italic">Cannot modify self</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <p class="text-muted p-3 mb-0">No users found.</p>
+        {% endif %}
+    </div>
+    <div class="card-footer text-muted">
+        Total Users: {{ users|length }}
+    </div>
+</div>
+
+<!-- Add more admin sections/cards here as needed -->
+
+{% endblock %}

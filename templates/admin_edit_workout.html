@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8 col-xl-7">
+        <h1 class="display-6 mb-4 text-center">{{ title }}</h1>
+        <div class="card shadow-sm">
+            <div class="card-body p-4">
+                {# Display general errors passed in 'errors' dict #}
+                {% if errors and errors.general %}
+                <div class="alert alert-danger" role="alert">
+                    {{ errors.general }}
+                </div>
+                {% endif %}
+
+                <form method="POST" action="{{ url_for('edit_workout', workout_id=workout.id) }}">
+                    <div class="mb-3">
+                        <label for="name" class="form-label">Workout Name <span class="text-danger">*</span></label>
+                        {# Add is-invalid class if error exists for 'name' #}
+                        <input type="text" class="form-control {% if errors and errors.name %}is-invalid{% endif %}" id="name" name="name" value="{{ workout.name }}" required>
+                        {# Display specific error message for 'name' #}
+                        {% if errors and errors.name %}
+                        <div class="invalid-feedback">
+                            {{ errors.name }}
+                        </div>
+                        {% endif %}
+                    </div>
+                    <div class="mb-3">
+                        <label for="description" class="form-label">Description</label>
+                        <textarea class="form-control" id="description" name="description" rows="3">{{ workout.description or '' }}</textarea>
+                    </div>
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label for="category" class="form-label">Category <span class="text-danger">*</span></label>
+                            {# Add is-invalid class if error exists for 'category' #}
+                            <select class="form-select {% if errors and errors.category %}is-invalid{% endif %}" id="category" name="category" required>
+                                <option value="" disabled>Select Category...</option>
+                                {% for cat in available_categories %}
+                                <option value="{{ cat }}" {% if workout.category == cat %}selected{% endif %}>{{ cat }}</option>
+                                {% endfor %}
+                                <!-- Option to add a new category could be added here -->
+                            </select>
+                            {# Display specific error message for 'category' #}
+                            {% if errors and errors.category %}
+                            <div class="invalid-feedback">
+                                {{ errors.category }}
+                            </div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            <label for="intensity" class="form-label">Intensity</label>
+                            <select class="form-select" id="intensity" name="intensity">
+                                <option value="" {% if not workout.intensity %}selected{% endif %}>Select Intensity...</option>
+                                <option value="Low" {% if workout.intensity == 'Low' %}selected{% endif %}>Low</option>
+                                <option value="Medium" {% if workout.intensity == 'Medium' %}selected{% endif %}>Medium</option>
+                                <option value="High" {% if workout.intensity == 'High' %}selected{% endif %}>High</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label for="duration_est" class="form-label">Estimated Duration (min)</label>
+                            <input type="number" class="form-control" id="duration_est" name="duration_est" value="{{ workout.duration_est or '' }}" min="0">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="equipment" class="form-label">Equipment</label>
+                            <input type="text" class="form-control" id="equipment" name="equipment" value="{{ workout.equipment or '' }}" placeholder="e.g., Dumbbells, Mat, None">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="instructions" class="form-label">Instructions</label>
+                        <textarea class="form-control" id="instructions" name="instructions" rows="5">{{ workout.instructions or '' }}</textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label for="reps_sets" class="form-label">Reps/Sets</label>
+                        <input type="text" class="form-control" id="reps_sets" name="reps_sets" value="{{ workout.reps_sets or '' }}" placeholder="e.g., 3 sets of 10-12 reps">
+                    </div>
+                    <div class="mb-3">
+                        <label for="form_tips" class="form-label">Form Tips</label>
+                        <textarea class="form-control" id="form_tips" name="form_tips" rows="3">{{ workout.form_tips or '' }}</textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label for="video_url" class="form-label">Video URL (YouTube)</label> {# Changed label slightly #}
+                        {# Add is-invalid class if error exists for 'video_url' #}
+                        <input type="url" class="form-control {% if errors and errors.video_url %}is-invalid{% endif %}" id="video_url" name="video_url" value="{{ workout.video_url or '' }}" placeholder="https://www.youtube.com/watch?v=VIDEO_ID" aria-describedby="videoHelpBlock"> {# Updated placeholder #}
+                        {# Display specific error message for 'video_url' #}
+                        {% if errors and errors.video_url %}
+                        <div class="invalid-feedback">
+                            {{ errors.video_url }} {# Error message now comes from Python #}
+                        </div>
+                        {% endif %}
+                        <div id="videoHelpBlock" class="form-text">
+                            Enter the standard YouTube video URL (e.g., https://www.youtube.com/watch?v=...). Leave blank for no video. {# Updated help text #}
+                        </div>
+                    </div>
+
+                    <div class="d-flex justify-content-end mt-4">
+                        <a href="{{ url_for('admin_workouts') }}" class="btn btn-secondary me-2">Cancel</a>
+                        <button type="submit" class="btn btn-primary">Save Changes</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

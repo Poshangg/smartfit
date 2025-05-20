@@ -1,0 +1,5 @@
+flask
+Flask-SQLAlchemy
+Flask-Login
+Werkzeug
+# Add other dependencies here as needed, e.g., requests (for APIs), celery (for tasks)

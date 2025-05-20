@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8 col-xl-6">
+        <h1 class="display-6 mb-4 text-center">Log Workout</h1>
+        <div class="card shadow-sm">
+            <div class="card-body p-4">
+                <form method="POST" action="{{ url_for('track_workout') }}">
+                    <div class="mb-3">
+                        <label for="workout_name" class="form-label">Workout Name / Type</label>
+                        <!-- Replace with a dropdown populated from DB or allow free text -->
+                        <input type="text" class="form-control" id="workout_name" name="workout_name" required placeholder="e.g., Morning Run, Full Body Strength">
+                    </div>
+                     <div class="mb-3">
+                        <label for="duration" class="form-label">Duration (minutes)</label>
+                        <input type="number" class="form-control" id="duration" name="duration" required min="1">
+                    </div>
+                     <div class="mb-3">
+                        <label for="calories_burned" class="form-label">Calories Burned (optional)</label>
+                        <input type="number" class="form-control" id="calories_burned" name="calories_burned" min="0">
+                    </div>
+                     <div class="mb-3">
+                        <label for="notes" class="form-label">Notes (optional)</label>
+                        <textarea class="form-control" id="notes" name="notes" rows="3" placeholder="e.g., Felt strong today, increased weight on bench press"></textarea>
+                    </div>
+                    <div class="d-grid"> <!-- Full width button -->
+                        <button type="submit" class="btn btn-primary btn-lg">Log Workout</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

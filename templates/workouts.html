@@ -1,0 +1,178 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1 class="display-6 mb-4">Workouts</h1>
+
+<div class="card shadow-sm mb-4">
+    <div class="card-header">
+        <h2 class="h5 mb-0">Find Your Next Workout</h2>
+    </div>
+    <div class="card-body">
+        <!-- Filter form -->
+        <form class="row row-cols-lg-auto g-3 align-items-center mb-4" method="GET" action="{{ url_for('workouts') }}">
+            <div class="col-12 flex-grow-1">
+                <label class="visually-hidden" for="searchWorkouts">Search</label>
+                <input type="text" class="form-control" id="searchWorkouts" name="search" placeholder="Search workouts..." list="workoutSuggestions" autocomplete="off" value="{{ request.args.get('search', '') }}">
+                <datalist id="workoutSuggestions"></datalist>
+            </div>
+            <div class="col-12">
+                <label class="visually-hidden" for="selectIntensity">Intensity</label>
+                <select class="form-select" id="selectIntensity" name="intensity">
+                    <option value="" {% if not request.args.get('intensity') %}selected{% endif %}>Intensity...</option>
+                    <option value="Low" {% if request.args.get('intensity') == 'Low' %}selected{% endif %}>Low</option>
+                    <option value="Medium" {% if request.args.get('intensity') == 'Medium' %}selected{% endif %}>Medium</option>
+                    <option value="High" {% if request.args.get('intensity') == 'High' %}selected{% endif %}>High</option>
+                </select>
+            </div>
+             <div class="col-12">
+                <label class="visually-hidden" for="selectDuration">Duration</label>
+                <select class="form-select" id="selectDuration" name="duration">
+                    <option value="" {% if not request.args.get('duration') %}selected{% endif %}>Duration...</option>
+                    <option value="1" {% if request.args.get('duration') == '1' %}selected{% endif %}>&lt; 15 min</option>
+                    <option value="2" {% if request.args.get('duration') == '2' %}selected{% endif %}>15-30 min</option>
+                    <option value="3" {% if request.args.get('duration') == '3' %}selected{% endif %}>&gt; 30 min</option>
+                </select>
+            </div>
+             <div class="col-12">
+                <label class="visually-hidden" for="selectCategory">Category</label>
+                <select class="form-select" id="selectCategory" name="category">
+                    <option value="" {% if not request.args.get('category') %}selected{% endif %}>Category...</option>
+                    {% for cat in available_categories %}
+                    <option value="{{ cat }}" {% if request.args.get('category') == cat %}selected{% endif %}>{{ cat }}</option>
+                    {% endfor %}
+                    <!-- Removed specific Gym/Home options -->
+                </select>
+            </div>
+            <div class="col-12">
+                <button type="submit" class="btn btn-primary">Filter</button>
+                 {% if request.args %} {# Show clear button only if filters are active #}
+                 <a href="{{ url_for('workouts') }}" class="btn btn-outline-secondary ms-2">Clear</a>
+                 {% endif %}
+            </div>
+        </form>
+        <!-- Message if no workouts match filters -->
+        {% if not ordered_grouped_workouts %}
+        <p class="text-muted">No workouts found matching your criteria.</p>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Loop through ordered grouped workouts -->
+{% for category, workouts_list in ordered_grouped_workouts %}
+<h2 class="mb-3">{{ category }} Workouts</h2>
+<div class="accordion mb-4" id="{{ category|replace(' ', '')|replace('/', '') }}Accordion"> {# Create unique ID for each accordion #}
+    {% for workout in workouts_list %}
+    <div class="accordion-item">
+        <h2 class="accordion-header" id="heading{{ category|replace(' ', '')|replace('/', '') }}{{ workout.id }}">
+            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse{{ category|replace(' ', '')|replace('/', '') }}{{ workout.id }}" aria-expanded="false" aria-controls="collapse{{ category|replace(' ', '')|replace('/', '') }}{{ workout.id }}">
+                <div class="d-flex w-100 justify-content-between">
+                    <span>{{ workout.name }}</span>
+                    <small class="text-muted me-3">
+                        {% if workout.duration_est %}{{ workout.duration_est }} min | {% endif %}
+                        {% if workout.intensity %}Intensity: {{ workout.intensity }}{% endif %}
+                    </small>
+                </div>
+            </button>
+        </h2>
+        <div id="collapse{{ category|replace(' ', '')|replace('/', '') }}{{ workout.id }}" class="accordion-collapse collapse" aria-labelledby="heading{{ category|replace(' ', '')|replace('/', '') }}{{ workout.id }}" data-bs-parent="#{{ category|replace(' ', '')|replace('/', '') }}Accordion">
+            <div class="accordion-body">
+                {% if workout.description %}<p><strong>Description:</strong> {{ workout.description }}</p>{% endif %}
+                {% if workout.equipment %}<p><strong>Equipment:</strong> {{ workout.equipment }}</p>{% endif %}
+                {% if workout.reps_sets %}<p><strong>Reps/Sets:</strong> {{ workout.reps_sets }}</p>{% endif %}
+                {% if workout.instructions %}
+                    <h6>Instructions:</h6>
+                    <p style="white-space: pre-wrap;">{{ workout.instructions }}</p> <!-- Use pre-wrap to respect newlines -->
+                {% endif %}
+                {% if workout.form_tips %}
+                    <h6>Form Tips:</h6>
+                    <p style="white-space: pre-wrap;">{{ workout.form_tips }}</p>
+                {% endif %}
+
+                <!-- Video Tutorial Section -->
+                {% if workout.video_url %}
+                {% set video_id = None %}
+                {% if 'youtube.com/watch?v=' in workout.video_url %}
+                    {# Extract video ID from standard URL #}
+                    {% set video_id = workout.video_url.split('v=')[1].split('&')[0] %}
+                {% elif 'youtu.be/' in workout.video_url %}
+                    {# Extract video ID from short URL #}
+                    {% set video_id = workout.video_url.split('/')[-1].split('?')[0] %}
+                {% endif %}
+
+                {% if video_id %}
+                <div class="mt-4">
+                    <h6>Video Tutorial:</h6>
+                    <!-- Responsive Embed (16:9 aspect ratio) -->
+                    <div class="ratio ratio-16x9">
+                        {# Construct the embed URL using the extracted video_id #}
+                        <iframe src="https://www.youtube.com/embed/{{ video_id }}" title="{{ workout.name }} Video Tutorial" allowfullscreen></iframe>
+                    </div>
+                </div>
+                {% else %}
+                {# Optional: Show a message if the URL is present but couldn't be parsed #}
+                <p class="text-muted small mt-3">Video available, but format could not be displayed.</p>
+                {% endif %}
+                {% else %}
+                 <p class="text-muted small mt-3">No video tutorial available for this workout.</p>
+                {% endif %}
+                <!-- End Video Tutorial Section -->
+
+                <div class="mt-3">
+                    <!-- Form to add workout -->
+                    <form action="{{ url_for('add_workout', workout_id=workout.id) }}" method="POST" class="d-inline">
+                        <button type="submit" class="btn btn-sm btn-outline-primary" {% if workout.id in saved_workout_ids %}disabled{% endif %}>
+                            {% if workout.id in saved_workout_ids %}Added{% else %}Add to My Workouts{% endif %}
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endfor %}
+<!-- End loop -->
+
+<!-- Removed separate Gym/Home sections -->
+
+{% endblock %}
+
+{% block scripts %}
+<!-- Suggestions script remains the same -->
+<script>
+    const searchInput = document.getElementById('searchWorkouts');
+    const suggestionsDatalist = document.getElementById('workoutSuggestions');
+    let debounceTimer;
+
+    searchInput.addEventListener('input', () => {
+        // Clear previous timer
+        clearTimeout(debounceTimer);
+
+        // Set a new timer to fetch suggestions after a short delay (e.g., 300ms)
+        debounceTimer = setTimeout(() => {
+            const query = searchInput.value;
+
+            if (query.length > 1) { // Only fetch if query is long enough
+                fetch(`{{ url_for('workout_suggest') }}?q=${encodeURIComponent(query)}`)
+                    .then(response => response.json())
+                    .then(suggestions => {
+                        // Clear previous options
+                        suggestionsDatalist.innerHTML = '';
+                        // Add new options
+                        suggestions.forEach(suggestion => {
+                            const option = document.createElement('option');
+                            option.value = suggestion;
+                            suggestionsDatalist.appendChild(option);
+                        });
+                    })
+                    .catch(error => {
+                        console.error('Error fetching workout suggestions:', error);
+                    });
+            } else {
+                // Clear suggestions if query is too short
+                suggestionsDatalist.innerHTML = '';
+            }
+        }, 300); // Adjust debounce delay as needed
+    });
+</script>
+{% endblock %}
